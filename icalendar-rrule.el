@@ -125,22 +125,9 @@ and 6 meaning Saturday."
   "Return a decoded time value for the ISO8601 last week of the year.
 YEAR is a full 4-digit year. DAY0 defaults to 1, with 0 meaning Sunday
 and 6 meaning Saturday."
-  (let (old-year old-epoch old-date last-week-date last-epoch)
-    (or day0 (setq day0 1))
-    (setq old-year        (encode-time 0 0 0 31 12 year 0)
-          old-epoch       (float-time old-year)
-          old-date        (decode-time old-year)
-          last-week-date  old-date
-          last-epoch      old-epoch)
-    (while (not (eq (nth 6 last-week-date) day0))
-      (setq last-epoch     (- last-epoch 86400)
-            last-week-date (decode-time (seconds-to-time last-epoch))))
-    ;; if the week we found has < 4 days inside this year, it actually
-    ;; belongs (per ISO 8601) to next year, so we need to jump back a week
-    (if (> (nth 3 last-week-date) 28)
-        (setq last-epoch (- last-epoch 604800)
-              last-week-date (decode-time (seconds-to-time last-epoch))))
-      last-week-date))
+  (let ((date (icalendar--rr-week1-start (1+ year) day0)))
+    (decode-time
+     (seconds-to-time (- (float-time (apply 'encode-time date)) 604800))) ))
 
 (defun icalendar--rr-nth-week (year n &optional day0)
   "Return the decoded time value for week N in YEAR (as per ISO 8601).
