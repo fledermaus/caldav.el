@@ -198,9 +198,10 @@ Negative values for N count backwards from the last week of the year"
                       (setq wd (icalendar--rr-nth-week (nth 5 dt) n)
                             wlist (cons wd wlist))) bset)) olist)
       (setq wlist
-            (mapcar (lambda (dt)
-                      (icalendar--rr-merge-date dtstart dt :sec :min :hour))
-                    wlist))
+            (mapcar
+             (lambda (dt)
+               (icalendar--rr-merge-date dtstart dt :sec :min :hour :dow))
+             wlist))
       (setcdr data (cons (cons :byweekno bset) (cdr data)))
       (setcdr (assq :occurs data) wlist)) ))
 
