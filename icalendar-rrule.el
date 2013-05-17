@@ -32,8 +32,37 @@
     ("FR" . 5)
     ("SA" . 6)))
 
+(defconst icalendar--rr-dt-slots '((:sec . 0) (:min . 1) (:hour . 2)
+                                   (:day . 3) (:mon . 4) (:year . 5)
+                                   (:dow . icalendar--rr-merge-date-dow)))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; utilities for rrule element parsing:
+(defun icalendar--rr-merge-date-dow (template date)
+  "Move DATE forwards, 24 hours at a time (if necessary) to
+arrive at a date matching the day of week in TEMPLATE (which can be a
+`decode-time' value or an integer between 0 and 6 (inclusive)).\n
+Retruns a decode-time value (which may be the original if no shift occurred)."
+  (let ((dow (if (listp template) dow (nth 6 template) template))
+        epoch old new-date)
+    (if (eq (nth 6 date) dow)
+        date
+      (setq epoch    (apply 'encode-time date)
+            old      (nth 6 date)
+            jump     (- dow old)
+            jump     (if (< jump 0) (+ 7 jump) jump)
+            epoch    (+ (* 86400 jump) epoch)
+            new-date (decode-time epoch))
+      new-date)))
+
+(defun icalendar--rr-merge-date (template new-date &rest slots)
+  (mapc (lambda (slot)
+          (if (setq slot (cdr (assq slot icalendar--rr-dt-slots)))
+            (if (integerp slot)
+                (setf (nth slot new-date) (nth slot template))
+              (setq new-date (funcall slot template new-date)))))
+        slots)
+  new-date)
+
 (defun icalendar--rr-jump (n step start-time start)
   "Return a `decode-time' style value resaulting from jumping N
 STEP units of time into the future from START-TIME. START is the 
