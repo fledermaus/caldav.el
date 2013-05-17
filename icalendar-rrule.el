@@ -199,10 +199,10 @@ Negative values for N count backwards from the last week of the year"
       (setcdr (assq :occurs data) wlist)) ))
 
 (defun icalendar--rr-bymonth (rule data dtstart start count until)
-  (when (eq (cdr (assq :freq data)) 'BYMONTH)
-    (let (bset action olist)
+  (let (bset action olist)
+    (when (setq bset (cadr (assq 'BYMONTH rule)))
       (setq action (icalendar--rr-byxxx-effect data 'MONTHLY)
-            bset   (icalendar--rr-byxxx-to-data (cadr (assq 'BYMONTH rule)))
+            bset   (icalendar--rr-byxxx-to-data bset)
             olist  (cdr (assq :occurs data))
             olist  (cond ((eq :expands action)
                           (icalendar--rr-expand-occurlist 4 bset olist))
