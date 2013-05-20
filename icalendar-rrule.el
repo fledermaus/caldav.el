@@ -338,14 +338,3 @@ supplied, a default of 1 year from the DTSTART value is assumed."
                             nil))))
       tmp-event
       (car (icalendar--all-events tmp-ical)))
-
-(icalendar--get-event-property tmp-event 'DTSTART)
-
-(let* ((zone-map (icalendar--convert-all-timezones tmp-ical))
-       (event    (car (icalendar--all-events tmp-ical)))
-       (estart   (icalendar--get-event-property event 'DTSTART))
-       (eprops   (icalendar--get-event-property-attributes event 'DTSTART))
-       (zone     (icalendar--find-time-zone eprops zone-map))
-       )
-  (format-time-string "%Y%m%d %H:%M:%S %z" (apply 'encode-time (icalendar--decode-isodatetime estart nil zone)) :utc)
-  )
