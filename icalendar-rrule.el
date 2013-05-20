@@ -35,6 +35,7 @@
 (defconst icalendar--rr-dt-slots '((:sec . 0) (:min . 1) (:hour . 2)
                                    (:day . 3) (:mon . 4) (:year . 5)
                                    (:dow . icalendar--rr-merge-date-dow)))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; utilities for rrule element parsing:
 (defun icalendar--rr-merge-date-dow (template date)
@@ -471,11 +472,9 @@ Negative values for N count backwards from the last week of the year"
 (defun icalendar--rr-occurences (event zone-map &optional end)
   "Return a list of time values (as per `encode-time') at which EVENT has
 an instance. If there is no recurrence rule entry, then a list of length
-1 (the DTSTART value) is returned.
-
+1 (the DTSTART value) is returned.\n
 ZONE-MAP should be the timezone map harvested from the calendar with
-icalendar--rr-timezones.
-
+icalendar--rr-timezones.\n
 If the recurrence rule exists, but specifies neither a COUNT value nor an
 UNTIL entry, then instances are only generated upto END (another time value).
 If neither limiting rule part (COUNT, DTSTART) is pecified and END is not
