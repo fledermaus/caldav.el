@@ -42,7 +42,7 @@
 arrive at a date matching the day of week in TEMPLATE (which can be a
 `decode-time' value or an integer between 0 and 6 (inclusive)).\n
 Retruns a decode-time value (which may be the original if no shift occurred)."
-  (let ((dow (if (listp template) dow (nth 6 template) template))
+  (let ((dow (if (listp template) (nth 6 template) template))
         epoch old new-date)
     (if (eq (nth 6 date) dow)
         date
