@@ -23,7 +23,7 @@
     (DAILY    . 86400 )
     (WEEKLY   . 604800)))
 
-(defconst icalendar--rr-dow-values 
+(defconst icalendar--rr-dow-values
   '(("SU" . 0)
     ("MO" . 1)
     ("TU" . 2)
@@ -64,11 +64,11 @@ Retruns a decode-time value (which may be the original if no shift occurred)."
   new-date)
 
 (defun icalendar--rr-jump (n step start-time start)
-  "Return a `decode-time' style value resaulting from jumping N
-STEP units of time into the future from START-TIME. START is the 
-encoded time-value corresponding to START.\n
+  "Return a `decode-time' style value resulting from jumping N
+STEP units of time into the future from START-TIME. START is the
+encoded time-value corresponding to START-TIME.\n
 Note that such decoded time values may be for ‘impossible’ dates
-like the 31st of February - we must still generate such dates as 
+like the 31st of February - we must still generate such dates as
 they provide the base-dates on which the byxxx rules operate,
 which may or may not result in a more workable date value."
   (let (x y m z)
@@ -79,9 +79,9 @@ which may or may not result in a more workable date value."
      ((setq x (assq step icalendar--rr-jumpsizes))
       (decode-time (seconds-to-time (+ (float-time start) (* n (cdr x))))))
      ;; into the rigidly defined areas of doubt and uncertainty:
-     ;; jump by n months. What is a month anyway? "It depends" 
+     ;; jump by n months. What is a month anyway? "It depends"
      ((eq 'MONTHLY step)
-      (setq x (copy-sequence start-time) 
+      (setq x (copy-sequence start-time)
             m (nth 4 x))
       (setf (nth 4 x) (+ n m))
       ;; this can result in a nonsensical month (> 12):
@@ -96,7 +96,7 @@ which may or may not result in a more workable date value."
       x)
      ;; jump by years. impossible days allowed, as with the MONTHLY case
      ((eq 'YEARLY step)
-      (setq x (copy-sequence start-time) 
+      (setq x (copy-sequence start-time)
             y (nth 5 x))
       (setf (nth 5 x) (+ n y)) x)) ))
 
@@ -108,7 +108,7 @@ which may or may not result in a more workable date value."
 
 (defun icalendar--rr-byxxx-effect (rule-data by-type)
   "Given RULE-DATA (as constructed internally by `icalendar--rr-occurences')
-return :expands or :restricts depending on whether the application of the 
+return :expands or :restricts depending on whether the application of the
 byxxx rule of type BY-TYPE should result in more or fewer event instances."
   (let ((r-type (cdr (assq :freq rule-data))))
     (if (memq by-type (memq r-type icalendar--rr-freqs)) :restricts :expands)))
@@ -173,8 +173,8 @@ Negative values for N count backwards from the last week of the year"
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; RECUR rule part parsers.
-;; these parsers rely on being called on a gven event in the order 
-;; defined in icalendar--rr-handlers (which is the same as defined in 
+;; these parsers rely on being called on a gven event in the order
+;; defined in icalendar--rr-handlers (which is the same as defined in
 ;; RFC2445 (http://www.ietf.org/rfc/rfc2445.txt))
 ;; Lasciate ogne speranza, voi ch'intrate:
 
@@ -259,7 +259,7 @@ If the recurrence rule exists, but specifies neither a COUNT value nor an
 UNTIL entry, then instances are only generated upto END (another time value).
 If neither limiting rule part (COUNT, DTSTART) is pecified and END is not
 supplied, a default of 1 year from the DTSTART value is assumed."
-  (let (zone dtstart eprops rrule-text rrule start edata count until) 
+  (let (zone dtstart eprops rrule-text rrule start edata count until)
     (setq estart     (icalendar--get-event-property event 'DTSTART)
           eprops     (icalendar--get-event-property-attributes event 'DTSTART)
           zone       (icalendar--find-time-zone eprops zone-map)
