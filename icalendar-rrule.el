@@ -144,6 +144,24 @@ byxxx rule of type BY-TYPE should result in more or fewer event instances."
                     (setq new-occur (cons p new-occur))) bset)) occurs)
     (nreverse new-occur)))
 
+(defun icalendar--rr-nth-day (year n &optional dtstart)
+  (when (and (>= n -366) (<= n 366) (not (zerop n)))
+    (let (origin m (zone (last dtstart)) epoch new-date)
+      (setq origin (copy-sequence dtstart)
+            origin (nthcdr 6 origin))
+      (if (< n 0)
+          (setq origin (apply 'encode-time 0 0 0 31 12 year nil) m (1+ n))
+        (setq origin (apply 'encode-time 0 0 0 1 1 year nil) m (1- n)))
+      (setq origin   (float-time origin)
+            epoch    (+ (* 86400 m) origin)
+            new-date (decode-time (seconds-to-time epoch)))
+      ;; if we jumped to a valid date, merge the time back in:
+      (if (eq (nth 5 dtstart) (nth 5 new-date))
+          (if dtstart
+              (icalendar--rr-merge-date dtstart new-date :sec :min :hour)
+            new-date)
+        nil) )))
+
 (defun icalendar--rr-week1-start (year &optional day0)
   "Return a decoded time value for the ISO8601 first week of the year.
 YEAR is a full 4-digit year. DAY0 defaults to 1, with 0 meaning Sunday
@@ -218,6 +236,23 @@ Negative values for N count backwards from the last week of the year"
       (setcdr data (cons (cons :bymonth (nconc bset action)) (cdr data)))
       (setcdr (assq :last-freq data) period)
       (setcdr (assq target     data)  olist)) ))
+
+;; only interpreting BYYEARDAY for YEARLY repeats. Not sure what it
+;; would mean in other contexts.
+(defun icalendar--rr-byyearday (rule data dtstart start count until target)
+  (let (bset olist ylist dlist)
+    (when (and (eq (cdr (assq :last-freq data)) 'YEARLY)
+               (setq bset (cadr (assq 'BYYEARDAY rule))))
+      (setq bset  (icalendar--rr-byxxx-to-data bset)
+            olist (cdr (assq target data))
+            ylist (delete-dups (mapcar (lambda (dt) (nth 5 dt)) olist)))
+      (mapc (lambda (y)
+              (mapc (lambda (d)
+                      (if (setq d (icalendar--rr-nth-day y d dtstart))
+                          (setq dlist (cons d dlist)))) bset)) ylist)
+      (setcdr data (cons (cons :byyearday bset) (cdr data)))
+      (setcdr (assq :last-freq data) 'DAILY)
+      (setcdr (assq target     data) dlist)) ))
 
 ;; byweekno only applies to yearly rules (per RFC2445)
 (defun icalendar--rr-byweekno (rule data dtstart start count until target)
