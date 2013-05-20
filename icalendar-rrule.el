@@ -116,7 +116,7 @@ which may or may not result in a more workable date value."
   "Given RULE-DATA (as constructed internally by `icalendar--rr-occurences')
 return :expands or :restricts depending on whether the application of the
 byxxx rule of type BY-TYPE should result in more or fewer event instances."
-  (let ((r-type (cdr (assq :freq rule-data))))
+  (let ((r-type (cdr (assq :last-freq rule-data))))
     (if (memq by-type (memq r-type icalendar--rr-freqs)) :restricts :expands)))
 
 (defun icalendar--rr-byxxx-element (text)
@@ -195,7 +195,7 @@ Negative values for N count backwards from the last week of the year"
 ;; byweekno only applies to yearly rules (per RFC2445)
 (defun icalendar--rr-byweekno (rule data dtstart start count until)
   (let (bset olist wlist)
-    (when (and (eq (cdr (assq :freq data)) 'YEARLY)
+    (when (and (eq (cdr (assq :last-freq data)) 'YEARLY)
                (setq bset (cadr (assq 'BYWEEKNO rule))))
       (setq bset  (icalendar--rr-byxxx-to-data bset)
             olist (cdr (assq :occurs data)))
@@ -210,6 +210,7 @@ Negative values for N count backwards from the last week of the year"
              wlist))
       (setcdr data (cons (cons :byweekno bset) (cdr data)))
       (setcdr (assq :occurs data) wlist)) ))
+      (setcdr (assq :last-freq data) 'WEEKLY)
 
 (defun icalendar--rr-bymonth (rule data dtstart start count until)
   (let (bset action olist)
@@ -248,8 +249,9 @@ Negative values for N count backwards from the last week of the year"
 
 (defun icalendar--rr-freq (rule data dtstart start count until)
   (let (freq)
-    (if (setq freq (intern-soft (cadr (assq 'FREQ rule))))
-        (setcdr data (cons (cons :freq freq) (cdr data))) )))
+    (when (setq freq (intern-soft (cadr (assq 'FREQ rule))))
+      (setcdr (assq :last-freq data) freq)
+      (setcdr (assq :freq      data) freq)) ))
 ;; end of rrule part parser section.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
