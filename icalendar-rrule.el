@@ -331,7 +331,6 @@ Negative values for N count backwards from the last week of the year"
 ;; RFC2445 (http://www.ietf.org/rfc/rfc2445.txt))
 ;; Lasciate ogne speranza, voi ch'intrate:
 
-(defun icalendar--rr-bysetpos   (rule data dtstart start count until))
 (defun icalendar--rr-by-x (rule data dtstart start count until target x)
   (let (bset action olist period slot)
     (cond ((eq 'BYSECOND x) (setq period 'SECONDLY slot 0))
@@ -353,6 +352,8 @@ Negative values for N count backwards from the last week of the year"
 
 (defun icalendar--rr-bysecond (rule data dtstart start count until target)
   (icalendar--rr-by-x rule data dtstart start count until target 'BYSECOND))
+
+(defun icalendar--rr-bysetpos (rule data dtstart start count until target))
 
 (defun icalendar--rr-byminute (rule data dtstart start count until target)
   (icalendar--rr-by-x rule data dtstart start count until target 'BYMINUTE))
