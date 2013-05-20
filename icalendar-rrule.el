@@ -523,6 +523,54 @@ supplied, a default of 1 year from the DTSTART value is assumed."
               (message "exrule %S -> \n%S\n--\n" handler edata))
             icalendar--rr-handlers))
 
+    ;; sort the generated dates
+    (let (rdates edates rcell ecell dates e0)
+      (setq rcell  (assq :occurs  edata)
+            rdates (cdr rcell)
+            rdates (sort rdates 'icalendar--rr-date-<)
+            ecell  (assq :exclude edata)
+            edates (cdr ecell)
+            edates (sort edates 'icalendar--rr-date-<))
+
+      ;; DTSTART is grandfathered in to the occurrence list
+      ;; even if the recur ruleset would exclude it.
+      ;; only EXRULE and EXDATE can remove DTSTART from the list:
+      (if (not (equal (car rdates) dtstart))
+          (setq rdates (cons dtstart rdates)))
+
+      ;; push the sorted exclude dates back into the data structure:
+      (if ecell (setcdr ecell edates))
+
+      ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+      ;; RRULE/EXRULE merging:
+      ;; two sorted lists of dates: filter out the elements of rdates
+      ;; which are also in edates:
+      (when (and edates (setq e0 (car edates)))
+        (while (and rdates edates)
+
+          ;; copy across rdates that are before the first edate
+          (while (and rdates (icalendar--rr-date-< (car rdates) e0))
+            (setq dates (cons (car rdates) dates) rdates (cdr rdates)))
+
+          ;; throw away all matches
+          (while (and rdates (equal (car rdates) e0))
+            (setq rdates (cdr rdates)))
+
+          ;; now throw away e0 until it catches up
+          (while (and rdates edates (icalendar--rr-date-< e0 (car rdates)))
+            (setq edates (cdr edates) e0 (car edates))))
+
+        ;; ran out of exclude items before r items: just copy the rest across
+        (mapc (lambda (d) (setq dates (cons d dates))) rdates)
+        (setq rdates (nreverse dates))
+
+        ;; push the (possibly) reduced date list back into the data structure:
+        (if rcell
+            (setcdr rcell rdates)
+          (setcdr edata (cons (cons :occurs edates) (cdr edata))))))
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    (cdr (assq :occurs edata))))
+
 (setq tmp-ical
       '((VCALENDAR nil
                    ((PRODID nil "-//Inverse inc./SOGo 2.0.5a//EN")
