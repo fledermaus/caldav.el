@@ -74,10 +74,12 @@ which may or may not result in a more workable date value."
   (let (x y m z)
     (cond
      ;; no jump - DTSTART is always the returned value for this:
-     ((zerop n) start-time)
+     ((zerop n) (setq x start-time))
      ;; the simple cases: seconds -> weeks are well defined units of time
      ((setq x (assq step icalendar--rr-jumpsizes))
-      (decode-time (seconds-to-time (+ (float-time start) (* n (cdr x))))))
+      (setq x (+ (float-time start) (* n (cdr x)))
+            x (seconds-to-time x)
+            x (decode-time x)))
      ;; into the rigidly defined areas of doubt and uncertainty:
      ;; jump by n months. What is a month anyway? "It depends"
      ((eq 'MONTHLY step)
@@ -92,13 +94,17 @@ which may or may not result in a more workable date value."
         (setq z (mod m 12)
               y (nth 5 x ))
         (setf (nth 4 x) (if (zerop z) 12 z))
-        (setf (nth 5 x) (+ (/ m 12) y)))
-      x)
+        (setf (nth 5 x) (+ (/ m 12) y))))
      ;; jump by years. impossible days allowed, as with the MONTHLY case
      ((eq 'YEARLY step)
       (setq x (copy-sequence start-time)
             y (nth 5 x))
-      (setf (nth 5 x) (+ n y)) x)) ))
+      (setf (nth 5 x) (+ n y)) ))
+    ;; if we crossed a DST boundary, tweak the time to compensate:
+    ;; (this does not apply to recurrences of finer granularity than 1 day):
+    (if (memq step '(DAILY WEEKLY MONTHLY YEARLY))
+        (setq x (icalendar--rr-merge-date start-time x :sec :min :hour)))
+    x))
 
 (defun icalendar--rr-day-possible-p (candidate-time)
   (let ((processed-time))
