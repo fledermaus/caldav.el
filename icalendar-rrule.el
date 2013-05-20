@@ -46,12 +46,12 @@ Retruns a decode-time value (which may be the original if no shift occurred)."
         epoch old new-date)
     (if (eq (nth 6 date) dow)
         date
-      (setq epoch    (apply 'encode-time date)
+      (setq epoch    (float-time (apply 'encode-time date))
             old      (nth 6 date)
             jump     (- dow old)
             jump     (if (< jump 0) (+ 7 jump) jump)
             epoch    (+ (* 86400 jump) epoch)
-            new-date (decode-time epoch))
+            new-date (decode-time (seconds-to-time epoch)))
       new-date)))
 
 (defun icalendar--rr-merge-date (template new-date &rest slots)
