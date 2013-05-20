@@ -240,8 +240,6 @@ Negative values for N count backwards from the last week of the year"
 (defun icalendar--rr-byminute   (rule data dtstart start count until))
 (defun icalendar--rr-byhour     (rule data dtstart start count until))
 (defun icalendar--rr-byday      (rule data dtstart start count until))
-(defun icalendar--rr-bymonthday (rule data dtstart start count until))
-(defun icalendar--rr-byyearday  (rule data dtstart start count until))
 (defun icalendar--rr-by-x (rule data dtstart start count until target x)
   (let (bset action olist period slot)
     (cond ((eq 'BYSECOND x) (setq period 'SECONDLY slot 0))
