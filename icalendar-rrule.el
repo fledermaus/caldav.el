@@ -484,6 +484,8 @@ supplied, a default of 1 year from the DTSTART value is assumed."
           eprops     (icalendar--get-event-property-attributes event 'DTSTART)
           zone       (icalendar--find-time-zone eprops zone-map)
           rrule-text (icalendar--get-event-property event 'RRULE)
+          exrule-txt (icalendar--get-event-property event 'EXRULE)
+          exrule     (icalendar--split-value exrule-txt)
           rrule      (icalendar--split-value rrule-text))
 
     ;; get the decomposed start time (necessary to fill in any time elements
