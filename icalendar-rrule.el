@@ -144,6 +144,30 @@ byxxx rule of type BY-TYPE should result in more or fewer event instances."
                     (setq new-occur (cons p new-occur))) bset)) occurs)
     (nreverse new-occur)))
 
+(defun icalendar--rr-month-max (dt)
+  "Where DT is a `decode-time' style date (only the year and month are
+inspected) return the highest valid day-of-month in that month."
+  (let ((m (nth 4 dt))
+        (y (nth 5 dt)))
+    (cond
+     ((memq m '(1 3 5 7 8 10 12)) 31)
+     ((memq m '(4 6 9 11))        30)
+     ((eq m 2)
+      ;; Yes, I know the % 100 % 400 % 4 thing. No, I'm not using it here.
+      (if (eq (nth 4 (decode-time (encode-time 0 0 0 29 2 y))) 2) 29 28)) )))
+
+(defun icalendar--rr-monthday (dt day)
+  "Adjust `decode-time' date value DT to RFC2445 month-day value DAY"
+  (when (and (integerp day) (not (zerop day)) (<= (abs day) 31))
+    (let ((max (icalendar--rr-month-max dt)) new-day)
+      (if (< day 0) (setq day (+ 1 max day)))
+      (if (or (<= day 0) (> day max))
+          nil
+        (setq new-day (copy-sequence dt))
+        (setf (nth 3 new-day) day)
+        (setq new-day (decode-time (apply 'encode-time new-day)))
+        (icalendar--rr-merge-date dt new-day :sec :min :hour)) )))
+
 (defun icalendar--rr-nth-day (year n &optional dtstart)
   (when (and (>= n -366) (<= n 366) (not (zerop n)))
     (let (origin m (zone (last dtstart)) epoch new-date)
@@ -236,6 +260,28 @@ Negative values for N count backwards from the last week of the year"
       (setcdr data (cons (cons :bymonth (nconc bset action)) (cdr data)))
       (setcdr (assq :last-freq data) period)
       (setcdr (assq target     data)  olist)) ))
+
+(defun icalendar--rr-bymonthday (rule data dtstart start count until target)
+  (let (bset olist dlist action)
+    (when (setq bset (cadr (assq 'BYMONTHDAY rule)))
+      (setq bset   (icalendar--rr-byxxx-to-data bset)
+            action (icalendar--rr-byxxx-effect data 'DAILY)
+            olist  (cdr (assq target data)))
+      (cond ((eq :expands   action)
+             (mapc
+              (lambda (o)
+                (mapc
+                 (lambda (day &optional new-day)
+                   (if (setq new-day (icalendar--rr-monthday o day))
+                       (setq dlist (cons new-day dlist)))) bset)) olist))
+            ((eq :restricts action)
+             (mapc (lambda (o)
+                     (mapc (lambda (d)
+                             (if (eq (nth 3 o) d)
+                                 (setq dlist (cons o dlist)))) bset)) olist)))
+      (setcdr data (cons (cons :bymonthday bset) (cdr data)))
+      (setcdr (assq :last-freq data) 'DAILY)
+      (setcdr (assq target     data)  dlist)) ))
 
 ;; only interpreting BYYEARDAY for YEARLY repeats. Not sure what it
 ;; would mean in other contexts.
