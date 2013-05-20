@@ -55,6 +55,15 @@ Retruns a decode-time value (which may be the original if no shift occurred)."
       new-date)))
 
 (defun icalendar--rr-merge-date (template new-date &rest slots)
+  "Merge two dates (`decode-time' values) : Values from TEMPLATE corresponding
+to the keywords in SLOTS (:sec :min :hour :day :mon :year and :dow) are
+copied into NEW-DATE.\n
+In the case of :dow the date components (day month and year) are altered
+to find the next date which matches the day-of-week in TEMPLATE (if the
+day-of-week already matches, this is a no-op).\n
+Returns a `decode-time' value, which may be the destructively altered
+NEW-DATE or may be a new value, depending on what transformations were
+necessary."
   (mapc (lambda (slot)
           (if (setq slot (cdr (assq slot icalendar--rr-dt-slots)))
             (if (integerp slot)
