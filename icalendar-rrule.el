@@ -496,80 +496,83 @@ supplied, a default of 1 year from the DTSTART value is assumed."
           start   (apply 'encode-time dtstart)
           count   (assq 'COUNT rrule))
 
-    ;; we always need an `UNTIL' value, as we cannot otherwise work out when
-    ;; to stop generating candidates.
-    ;; (`COUNT' won't work for this: tl;dr: human calendars are insane)
-    ;; start with the tasks explicit `UNTIL' value, falling back to the
-    ;; explicit `UNTIL' in the call to this function and then the implicit
-    ;; one year span we impose (as calendar views rarely exceed one year):
-    (if (setq until (assq 'UNTIL rrule))
-        (setq until (icalendar--decode-isodatetime until)
-              until (apply 'encode-time until))
-      (if end
-          (setq until end)
-        (setq end (copy-sequence dtstart))
-        (incf (nth 5 end))
-        (setq until (apply 'encode-time end))))
+    (if (not rrule)
+        dtstart
+      ;; we always need an `UNTIL' value, as we cannot otherwise work out when
+      ;; to stop generating candidates.
+      ;; (`COUNT' won't work for this: tl;dr: human calendars are insane)
+      ;; start with the tasks explicit `UNTIL' value, falling back to the
+      ;; explicit `UNTIL' in the call to this function and then the implicit
+      ;; one year span we impose (as calendar views rarely exceed one year):
+      (if (setq until (assq 'UNTIL rrule))
+          (setq until (icalendar--decode-isodatetime until)
+                until (apply 'encode-time until))
+        (if end
+            (setq until end)
+          (setq end (copy-sequence dtstart))
+          (incf (nth 5 end))
+          (setq until (apply 'encode-time end))))
 
-    (setq edata (list t '(:freq nil) '(:last-freq nil)))
-    (when rrule
-      (mapc (lambda (handler)
-              (funcall handler rrule edata dtstart start count until :occurs)
-              (message "rrule %S -> \n%S\n--\n" handler edata))
-            icalendar--rr-handlers))
-    (when exrule
-      (mapc (lambda (handler)
-              (funcall handler exrule edata dtstart start count until :exclude)
-              (message "exrule %S -> \n%S\n--\n" handler edata))
-            icalendar--rr-handlers))
+      (setq edata (list t '(:freq nil) '(:last-freq nil)))
+      (when rrule
+        (mapc (lambda (handler)
+                (funcall handler rrule edata dtstart start count until :occurs)
+                ;;(message "rrule %S -> \n%S\n--\n" handler edata)
+                )
+              icalendar--rr-handlers))
+      (when exrule
+        (mapc (lambda (handler)
+                (funcall handler exrule edata dtstart start count until :exclude)
+                ;;(message "exrule %S -> \n%S\n--\n" handler edata)
+                )
+              icalendar--rr-handlers))
 
-    ;; sort the generated dates
-    (let (rdates edates rcell ecell dates e0)
-      (setq rcell  (assq :occurs  edata)
-            rdates (cdr rcell)
-            rdates (sort rdates 'icalendar--rr-date-<)
-            ecell  (assq :exclude edata)
-            edates (cdr ecell)
-            edates (sort edates 'icalendar--rr-date-<))
+      ;; sort the generated dates
+      (let (rc-dates ex-dates rcell ecell dates e0)
+        (setq rcell    (assq :occurs  edata)
+              rc-dates (cdr rcell)
+              rc-dates (sort rc-dates 'icalendar--rr-date-<)
+              ecell    (assq :exclude edata)
+              ex-dates (cdr ecell)
+              ex-dates (sort ex-dates 'icalendar--rr-date-<))
 
-      ;; DTSTART is grandfathered in to the occurrence list
-      ;; even if the recur ruleset would exclude it.
-      ;; only EXRULE and EXDATE can remove DTSTART from the list:
-      (if (not (equal (car rdates) dtstart))
-          (setq rdates (cons dtstart rdates)))
+        ;; DTSTART is grandfathered in to the occurrence list
+        ;; even if the recur ruleset would exclude it.
+        ;; only EXRULE and EXDATE can remove DTSTART from the list:
+        (if (not (equal (car rc-dates) dtstart))
+            (setq rc-dates (cons dtstart rc-dates)))
 
-      ;; push the sorted exclude dates back into the data structure:
-      (if ecell (setcdr ecell edates))
+        ;; push the sorted exclude dates back into the data structure:
+        (if ecell (setcdr ecell ex-dates))
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+        ;; RRULE/EXRULE merging:
+        ;; two sorted lists of dates: filter out the elements of rc-dates
+        ;; which are also in ex-dates:
+        (when (and ex-dates (setq e0 (car ex-dates)))
+          (while (and rc-dates ex-dates)
 
-      ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-      ;; RRULE/EXRULE merging:
-      ;; two sorted lists of dates: filter out the elements of rdates
-      ;; which are also in edates:
-      (when (and edates (setq e0 (car edates)))
-        (while (and rdates edates)
+            ;; copy across rc-dates that are before the first edate
+            (while (and rc-dates (icalendar--rr-date-< (car rc-dates) e0))
+              (setq dates (cons (car rc-dates) dates) rc-dates (cdr rc-dates)))
 
-          ;; copy across rdates that are before the first edate
-          (while (and rdates (icalendar--rr-date-< (car rdates) e0))
-            (setq dates (cons (car rdates) dates) rdates (cdr rdates)))
+            ;; throw away all matches
+            (while (and rc-dates (equal (car rc-dates) e0))
+              (setq rc-dates (cdr rc-dates)))
 
-          ;; throw away all matches
-          (while (and rdates (equal (car rdates) e0))
-            (setq rdates (cdr rdates)))
+            ;; now throw away e0 until it catches up
+            (while (and rc-dates ex-dates
+                        (icalendar--rr-date-< e0 (car rc-dates)))
+              (setq ex-dates (cdr ex-dates) e0 (car ex-dates))))
 
-          ;; now throw away e0 until it catches up
-          (while (and rdates edates (icalendar--rr-date-< e0 (car rdates)))
-            (setq edates (cdr edates) e0 (car edates))))
-
-        ;; ran out of exclude items before r items: just copy the rest across
-        (mapc (lambda (d) (setq dates (cons d dates))) rdates)
-        (setq rdates (nreverse dates))
-
-        ;; push the (possibly) reduced date list back into the data structure:
-        (if rcell
-            (setcdr rcell rdates)
-          (setcdr edata (cons (cons :occurs edates) (cdr edata))))))
-        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    (cdr (assq :occurs edata))))
+          ;; ran out of exclude items before r items: just copy the rest across
+          (mapc (lambda (d) (setq dates (cons d dates))) rc-dates)
+          (setq rc-dates (nreverse dates)))
+          ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+          ;; push the (possibly) reduced date list back into the data structure:
+          (if rcell
+              (setcdr rcell rc-dates)
+            (setcdr edata (cons (cons :occurs rc-dates) (cdr edata)))))
+      (cdr (assq :occurs edata))) ))
 
 (setq tmp-ical
       '((VCALENDAR nil
