@@ -1,3 +1,4 @@
+;; -*- lexical-binding: t -*-
 ;;; dav.el --- WebDAV support
 
 ;; Copyright © 2001, 2004-2012  Free Software Foundation, Inc.
@@ -116,12 +117,9 @@
          (time-second    2digit)
          (time-secfrac   "\\(\\.[0-9]+\\)?")
          (time-numoffset (concat "[-+]\\(" time-hour "\\):" time-minute))
-         (time-offset    (concat "Z" time-numoffset))
          (partial-time   (concat time-hour colon time-minute colon time-second
                                  time-secfrac))
-         (full-date      (concat date-fullyear dash date-month dash date-mday))
-         (full-time      (concat partial-time time-offset))
-         (date-time      (concat full-date "T" full-time)))
+         (full-date      (concat date-fullyear dash date-month dash date-mday)))
     (list (concat "^" full-date)
           (concat "T" partial-time)
           (concat "Z" time-numoffset)))
@@ -137,7 +135,7 @@
          (tz-re       (nth 2 dav-iso8601-regexp))
          (date-string (dav-node-text node))
          re-start
-         time seconds minute hour fractional-seconds
+         time seconds minute hour
          day month year day-of-week dst tz)
     ;; We need to populate 'time' with
     ;; (SEC MIN HOUR DAY MON YEAR DOW DST TZ)
@@ -152,8 +150,6 @@
         (setq hour    (string-to-number (match-string 1 date-string))
               minute  (string-to-number (match-string 2 date-string))
               seconds (string-to-number (match-string 3 date-string))
-              fractional-seconds
-              (string-to-number (or (match-string 4 date-string) "0"))
               re-start (match-end 0))
         (when (string-match tz-re date-string re-start)
           (setq tz (match-string 1 date-string)))
@@ -211,8 +207,7 @@
   (let ((children    (xml-node-children node))
         (node-type    nil)
         (props        nil)
-        (value        nil)
-        (handler-func nil))
+        (value        nil))
     (when (not children)
       (error "No child nodes in DAV:prop"))
 
@@ -437,7 +432,7 @@ XML document."
         ;; nobody but us needs to know the difference.
         (list (cons url properties))))))
 
-(defun dav-process-async-response (status url callback)
+(defun dav-process-async-response (_status url callback)
   (funcall callback (dav-process-response (current-buffer) url)))
 
 ;;;###autoload
@@ -534,7 +529,6 @@ FAILURE-RESULTS is a list of (URL STATUS)."
            "  </DAV:owner>\n"))
          (response nil)           ; Responses to the LOCK request
          (result nil)             ; For walking thru the response list
-         (child-url nil)
          (child-status nil)
          (failures nil)           ; List of failure cases (URL . STATUS)
          (successes nil))         ; List of success cases (URL . STATUS)
@@ -549,7 +543,6 @@ FAILURE-RESULTS is a list of (URL STATUS)."
     ;; status code.
     (while response
       (setq result (pop response)
-            child-url (url-expand-file-name (pop result) url)
             child-status (or (plist-get result 'DAV:status) 500))
       (if (dav-http-success-p child-status)
           (push (list url child-status "huh") successes)
@@ -559,7 +552,6 @@ FAILURE-RESULTS is a list of (URL STATUS)."
 (defun dav-active-locks (url &optional depth)
   "Return an assoc list of all active locks on URL."
   (let ((response (dav-get-properties url '(DAV:lockdiscovery) depth))
-        (properties nil)
         (child nil)
         (child-url nil)
         (child-results nil)
@@ -705,8 +697,7 @@ Returns t if the lock was successfully released."
   "Save OBJ as URL using WebDAV.
 URL must be a fully qualified URL.
 OBJ may be a buffer or a string."
-  (let ((buffer nil)
-        (url-request-extra-headers nil)
+  (let ((url-request-extra-headers nil)
         (url-request-method "PUT")
         (url-request-data
          (cond ((bufferp obj) (with-current-buffer obj (buffer-string)))
@@ -726,7 +717,7 @@ OBJ may be a buffer or a string."
         (url-retrieve url 'dav-save-resource-response (list nil callback))
       (dav-save-resource-response (url-retrieve-synchronously url))) ))
 
-(defun dav-save-resource-response (buffer &optional callback result)
+(defun dav-save-resource-response (buffer &optional _callback result)
   (or buffer (setq buffer (current-buffer)))
   (when buffer
     (unwind-protect
@@ -754,7 +745,6 @@ Use with care, and even then think three times."
 If optional second argument RECURSIVE is non-nil, then delete all
 files in the collection as well."
   (let ((status nil)
-        (props nil)
         (props nil))
     (setq props (dav-delete-something
                  url lock-token
@@ -847,7 +837,7 @@ If NOSORT is non-nil, the list is not sorted--its order is unpredictable.
     (when (member 'DAV:collection (plist-get properties 'DAV:resourcetype))
       t)))
 
-(defun dav-make-directory (url &optional parents)
+(defun dav-make-directory (url &optional _parents)
   "Create the directory DIR and any nonexistent parent dirs."
   (let* ((url-request-extra-headers nil)
          (url-request-method "MKCOL")
@@ -926,8 +916,7 @@ Returns the longest string common to all file names in URL
 that start with FILE.
 If there is only one and FILE matches it exactly, returns t.
 Returns nil if URL contains no name starting with FILE."
-  (let ((matches (dav-file-name-all-completions file url))
-        (result nil))
+  (let ((matches (dav-file-name-all-completions file url)))
     (cond
      ((null matches)
       ;; No matches
