@@ -476,16 +476,21 @@ single entry (the DTSTART value) is returned.
 ZONE-MAP should be the timezone map harvested from the calendar with
 icalendar--rr-timezones.\n
 If the recurrence rule exists, but specifies neither a COUNT value nor an
-  (let (zone dtstart eprops rrule-text rrule start edata count until)
 UNTIL entry, then instances are only generated upto END (an emacs time value
 as per `encode-time').\n
 If neither limiting rule part (COUNT, DTEND) is specified and END is not
 supplied, a default of 1 year from the DTSTART value is assumed."
+  (let (zone dtstart eprops rrule-text rrule start edata count until
+        rd-list ex-list rdate-text exdate-txt)
     (setq estart     (icalendar--get-event-property event 'DTSTART)
           eprops     (icalendar--get-event-property-attributes event 'DTSTART)
           zone       (icalendar--find-time-zone eprops zone-map)
+          rdate-text (icalendar--get-event-property event 'RDATE)
           rrule-text (icalendar--get-event-property event 'RRULE)
+          exdate-txt (icalendar--get-event-property event 'EXDATE)
           exrule-txt (icalendar--get-event-property event 'EXRULE)
+          rdate      (split-string (or rdate-text "") "," t)
+          exdate     (split-string (or exdate-txt "") "," t)
           exrule     (icalendar--split-value exrule-txt)
           rrule      (icalendar--split-value rrule-text))
 
@@ -497,7 +502,7 @@ supplied, a default of 1 year from the DTSTART value is assumed."
           start   (apply 'encode-time dtstart)
           count   (assq 'COUNT rrule))
 
-    (if (not rrule)
+    (if (and (not rrule) (not rdate))
         (list dtstart)
       ;; we always need an `UNTIL' value, as we cannot otherwise work out when
       ;; to stop generating candidates.
@@ -515,6 +520,7 @@ supplied, a default of 1 year from the DTSTART value is assumed."
           (setq until (apply 'encode-time end))))
 
       (setq edata (list t '(:freq nil) '(:last-freq nil)))
+
       (when rrule
         (mapc (lambda (handler)
                 (funcall handler rrule edata dtstart start count until :occurs)
@@ -528,13 +534,31 @@ supplied, a default of 1 year from the DTSTART value is assumed."
                 )
               icalendar--rr-handlers))
 
+      (when rdate
+        (message "processing rdate: %S" rdate)
+        (let (eprops zone)
+          (setq eprops  (icalendar--get-event-property-attributes event 'RRULE)
+                zone    (icalendar--find-time-zone eprops zone-map)
+                rd-list (mapcar
+                         (lambda (x)
+                           (icalendar--decode-isodatetime x zone)) rdate)) ))
+      (when exdate
+        (let (eprops zone)
+          (setq eprops  (icalendar--get-event-property-attributes event 'EXRULE)
+                zone    (icalendar--find-time-zone eprops zone-map)
+                ex-list (mapcar
+                         (lambda (x)
+                           (icalendar--decode-isodatetime x zone)) exdate)) ))
+
       ;; sort the generated dates
       (let (rc-dates ex-dates rcell ecell dates e0)
         (setq rcell    (assq :occurs  edata)
               rc-dates (cdr rcell)
+              rc-dates (append rd-list rc-dates)
               rc-dates (sort rc-dates 'icalendar--rr-date-<)
               ecell    (assq :exclude edata)
               ex-dates (cdr ecell)
+              ex-dates (append ex-list ex-dates)
               ex-dates (sort ex-dates 'icalendar--rr-date-<))
 
         ;; DTSTART is grandfathered in to the occurrence list
