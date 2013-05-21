@@ -207,7 +207,7 @@ byxxx rule of type BY-TYPE should result in more or fewer event instances."
             dlist (sort dlist 'icalendar--rr-date-<))
       (list (nth n dlist))) ))
 
-(defun icalendar--rr-expand-occurlist-byday (bset period occurs)
+(defun icalendar--rr-expand-occurlist-byday (bset period occurs dtstart)
   (let (new-occur)
     (mapc
      (lambda (o)
@@ -217,10 +217,14 @@ byxxx rule of type BY-TYPE should result in more or fewer event instances."
                               (icalendar--rr-nth-weekday-in o period x))
                              ((integerp x)
                               (icalendar--rr-weekdays-in o period x))))
-              (setq new-occur (nconc dl new-occur)))) bset)) occurs)
+              (setq dl (mapcar
+                        (lambda (d)
+                          (icalendar--rr-merge-date dtstart d :sec :min :hour))
+                        dl)
+                    new-occur (nconc dl new-occur)))) bset)) occurs)
     new-occur))
 
-(defun icalendar--rr-restrict-occurlist-byday (bset period occurs)
+(defun icalendar--rr-restrict-occurlist-byday (bset period occurs _dtstart)
   (let (cardinal ordinal dlist maybe)
     (mapc (lambda (d)
             (if (consp d)
@@ -373,7 +377,7 @@ Negative values for N count backwards from the last week of the year"
                           'icalendar--rr-expand-occurlist-byday)
                          ((eq :restricts action)
                           'icalendar--rr-restrict-occurlist-byday))
-            olist  (funcall func bset period olist))
+            olist  (funcall func bset period olist dtstart))
       (setcdr data (cons (cons :byday bset) (cdr data)))
       (setcdr (assq :last-freq data) 'DAILY)
       (setcdr (assq target     data)  olist)) ))
