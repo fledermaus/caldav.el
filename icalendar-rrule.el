@@ -1,4 +1,5 @@
 ;; -*- lexical-binding: t -*-
+(eval-when-compile (require 'cl))
 
 (defconst icalendar--rr-freqs
   '(SECONDLY MINUTELY HOURLY DAILY WEEKLY MONTHLY YEARLY))
@@ -271,7 +272,7 @@ inspected) return the highest valid day-of-month in that month."
 
 (defun icalendar--rr-nth-day (year n &optional dtstart)
   (when (and (>= n -366) (<= n 366) (not (zerop n)))
-    (let (origin m (zone (last dtstart)) epoch new-date)
+    (let (origin m epoch new-date)
       (setq origin (copy-sequence dtstart)
             origin (nthcdr 6 origin))
       (if (< n 0)
@@ -320,7 +321,7 @@ and 6 meaning Saturday."
   "Return the decoded time value for week N in YEAR (as per ISO 8601).
 Negative values for N count backwards from the last week of the year"
   (when (and (>= 53 n) (<= -53 n) (not (zerop n)))
-    (let (start-date start result N)
+    (let (start-date start result)
       (cond ((< n 0)
              (setq m (1+ n) start-date (icalendar--rr-weekN-start year day0)))
             ((> n 0)
@@ -336,7 +337,7 @@ Negative values for N count backwards from the last week of the year"
 ;; RFC2445 (http://www.ietf.org/rfc/rfc2445.txt))
 ;; Lasciate ogne speranza, voi ch'intrate:
 
-(defun icalendar--rr-by-x (rule data dtstart start count until target x)
+(defun icalendar--rr-by-x (rule data _dtstart _start _count _until target x)
   (let (bset action olist period slot)
     (cond ((eq 'BYSECOND x) (setq period 'SECONDLY slot 0))
           ((eq 'BYMINUTE x) (setq period 'MINUTELY slot 1))
@@ -358,7 +359,8 @@ Negative values for N count backwards from the last week of the year"
 (defun icalendar--rr-bysecond (rule data dtstart start count until target)
   (icalendar--rr-by-x rule data dtstart start count until target 'BYSECOND))
 
-(defun icalendar--rr-bysetpos (rule data dtstart start count until target))
+(defun icalendar--rr-bysetpos (rule data dtstart start count until target)
+  (ignore rule data dtstart start count until target))
 
 (defun icalendar--rr-byminute (rule data dtstart start count until target)
   (icalendar--rr-by-x rule data dtstart start count until target 'BYMINUTE))
@@ -366,8 +368,8 @@ Negative values for N count backwards from the last week of the year"
 (defun icalendar--rr-byhour (rule data dtstart start count until target)
   (icalendar--rr-by-x rule data dtstart start count until target 'BYHOUR))
 
-(defun icalendar--rr-byday (rule data dtstart start count until target)
-  (let (bset action olist period handler)
+(defun icalendar--rr-byday (rule data dtstart _start _count _until target)
+  (let (bset action olist period)
     (when (setq bset (cadr (assq 'BYDAY rule)))
       (setq action (icalendar--rr-byxxx-effect data 'DAILY)
             period (cdr (assq :last-freq data))
@@ -382,7 +384,7 @@ Negative values for N count backwards from the last week of the year"
       (setcdr (assq :last-freq data) 'DAILY)
       (setcdr (assq target     data)  olist)) ))
 
-(defun icalendar--rr-bymonthday (rule data dtstart start count until target)
+(defun icalendar--rr-bymonthday (rule data _dtstart _start _count _until target)
   (let (bset olist dlist action)
     (when (setq bset (cadr (assq 'BYMONTHDAY rule)))
       (setq bset   (icalendar--rr-byxxx-to-data bset)
@@ -406,7 +408,7 @@ Negative values for N count backwards from the last week of the year"
 
 ;; only interpreting BYYEARDAY for YEARLY repeats. Not sure what it
 ;; would mean in other contexts.
-(defun icalendar--rr-byyearday (rule data dtstart start count until target)
+(defun icalendar--rr-byyearday (rule data dtstart _start _count _until target)
   (let (bset olist ylist dlist)
     (when (and (eq (cdr (assq :last-freq data)) 'YEARLY)
                (setq bset (cadr (assq 'BYYEARDAY rule))))
@@ -422,7 +424,7 @@ Negative values for N count backwards from the last week of the year"
       (setcdr (assq target     data) dlist)) ))
 
 ;; byweekno only applies to yearly rules (per RFC2445)
-(defun icalendar--rr-byweekno (rule data dtstart start count until target)
+(defun icalendar--rr-byweekno (rule data dtstart _start _count _until target)
   (let (bset olist wlist)
     (when (and (eq (cdr (assq :last-freq data)) 'YEARLY)
                (setq bset (cadr (assq 'BYWEEKNO rule))))
@@ -444,8 +446,8 @@ Negative values for N count backwards from the last week of the year"
 (defun icalendar--rr-bymonth (rule data dtstart start count until target)
   (icalendar--rr-by-x rule data dtstart start count until target 'BYMONTH))
 
-(defun icalendar--rr-interval (rule data dtstart start count until target)
-  (let (freq interval occurs (j 0) (o 0) next (last start))
+(defun icalendar--rr-interval (rule data dtstart start _count until target)
+  (let (freq interval occurs (j 0) next (last start))
     (setq interval (or (cadr (assq 'INTERVAL rule)) 1)
           freq     (cdr (assq :freq data)))
     (setcdr data (cons (cons :interval interval) (cdr data)))
@@ -459,13 +461,13 @@ Negative values for N count backwards from the last week of the year"
     ;; tl;dr → ignore `COUNT' at this stage, assume an `UNTIL' value exists:
     (while last
       (setq next (icalendar--rr-jump j freq dtstart start) j (1+ j) last nil)
-      (if (<= (time-to-seconds (apply 'encode-time next))
-              (time-to-seconds until))
+      (if (<= (float-time (apply 'encode-time next))
+              (float-time until))
           (setq occurs (cons next occurs) last next)))
     ;; store the basic list of event-occurrences
     (setcdr data (cons (cons target occurs) (cdr data))) ))
 
-(defun icalendar--rr-freq (rule data dtstart start count until target)
+(defun icalendar--rr-freq (rule data _dtstart _start _count _until _target)
   (let (freq)
     (when (setq freq (intern-soft (cadr (assq 'FREQ rule))))
       (setcdr (assq :last-freq data) freq)
