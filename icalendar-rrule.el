@@ -478,7 +478,11 @@ icalendar--rr-timezones.\n
 If the recurrence rule exists, but specifies neither a COUNT value nor an
 UNTIL entry, then instances are only generated upto END (another time value).
 If neither limiting rule part (COUNT, DTSTART) is pecified and END is not
-supplied, a default of 1 year from the DTSTART value is assumed."
+supplied, a default of 1 year from the DTSTART value is assumed.
+If there is no recurrence rule, instead of returning a list of `decode-time'
+values a single such value will be returned. (Note that this value will still
+satisfy `listp' so your test should be a little more sophisticated than that:
+\(consp (car RETURNED-VALUE)) should distinguish between the two cases)"
   (let (zone dtstart eprops rrule-text rrule start edata count until)
     (setq estart     (icalendar--get-event-property event 'DTSTART)
           eprops     (icalendar--get-event-property-attributes event 'DTSTART)
