@@ -470,20 +470,17 @@ Negative values for N count backwards from the last week of the year"
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun icalendar--rr-occurences (event zone-map &optional end)
-  "Return a list of time values (as per `encode-time') at which EVENT has
-an instance. If there is no recurrence rule entry, then a list of length
-1 (the DTSTART value) is returned.\n
+  "Return a list of time values (as per `decode-time') at which EVENT has
+an instance. If there is no recurrence rule entry, then a list with a
+single entry (the DTSTART value) is returned.
 ZONE-MAP should be the timezone map harvested from the calendar with
 icalendar--rr-timezones.\n
 If the recurrence rule exists, but specifies neither a COUNT value nor an
-UNTIL entry, then instances are only generated upto END (another time value).
-If neither limiting rule part (COUNT, DTSTART) is pecified and END is not
-supplied, a default of 1 year from the DTSTART value is assumed.
-If there is no recurrence rule, instead of returning a list of `decode-time'
-values a single such value will be returned. (Note that this value will still
-satisfy `listp' so your test should be a little more sophisticated than that:
-\(consp (car RETURNED-VALUE)) should distinguish between the two cases)"
   (let (zone dtstart eprops rrule-text rrule start edata count until)
+UNTIL entry, then instances are only generated upto END (an emacs time value
+as per `encode-time').\n
+If neither limiting rule part (COUNT, DTEND) is specified and END is not
+supplied, a default of 1 year from the DTSTART value is assumed."
     (setq estart     (icalendar--get-event-property event 'DTSTART)
           eprops     (icalendar--get-event-property-attributes event 'DTSTART)
           zone       (icalendar--find-time-zone eprops zone-map)
@@ -501,7 +498,7 @@ satisfy `listp' so your test should be a little more sophisticated than that:
           count   (assq 'COUNT rrule))
 
     (if (not rrule)
-        dtstart
+        (list dtstart)
       ;; we always need an `UNTIL' value, as we cannot otherwise work out when
       ;; to stop generating candidates.
       ;; (`COUNT' won't work for this: tl;dr: human calendars are insane)
