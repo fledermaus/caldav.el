@@ -268,4 +268,5 @@ See also: (man \"tzfile(5)\") and `tzinfo-process-blob'."
                zone file))
     data))
 
-(progn (insert (pp (tzinfo-data "right/Etc/GMT+5"))) nil)
+;; (progn (insert (pp (tzinfo-data "right/Etc/GMT+5"))) nil)
+(provide 'tzinfo)
