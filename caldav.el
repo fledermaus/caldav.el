@@ -27,6 +27,7 @@
 ;;; Commentary:
 
 ;;; Code:
+(require 'url-parse)
 
 (defconst caldav-ns-caldav "urn:ietf:params:xml:ns:caldav")
 (defconst caldav-ical-node 
@@ -97,6 +98,16 @@ incrementing the year value, and recomposing it)."
     (caldav-aput caldav-prop-cache url props)
     props))
 
+(defun caldav-absolute-url (url &optional template)
+  "If URL is absolute, return it. If it is not (ie it consists only of the
+part after protocol://host.name) then merge it with TEMPLATE (an absolute
+url) or, if TEMPLATE is nil, with `caldav-default-url'.\n
+Returns an absolute url."
+  (if (string-match "^\\(?:[a-z]+:\\)//" url)
+      url
+    (setq template (url-generic-parse-url (or template caldav-default-url)))
+    (setf (url-filename template) url)
+    (url-recreate-url template)))
 (defun caldav-fetch-ical (&optional url start end)
   (let ((report-data (caldav-query start end)) from to query done)
     (setq from  (car   report-data)
