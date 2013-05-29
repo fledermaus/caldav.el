@@ -75,9 +75,8 @@ incrementing the year value, and recomposing it)."
         end   (caldav-report-time end  ))
   (list start end
         (format "  <D:prop>
-    <D:getetag/>
-    <C:calendar-data/>
-    <C:caldav-expand/>
+    <D:getetag />
+    <C:calendar-data />
   </D:prop>
   <C:filter>
     <C:comp-filter name='VCALENDAR'>
