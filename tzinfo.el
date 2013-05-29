@@ -165,26 +165,26 @@ Each :header entry contains the following data:\n
     (char    . 20))      ;; size in bytes of the TZ acronym list\n
 Each :zone-data entry contains the following:
    (:zone-data
-    (time -2717640704.0 -1633269760.0 … 2140678800.0)
-    (index 2 1 … 2)
-    (zone ((name . \"LMT\") (dst)     (offset . -28378))
-          ((name . \"PDT\") (dst . t) (offset . -25200))
-          ((name . \"PST\") (dst)     (offset . -28800))
-          ((name . \"PWT\") (dst . t) (offset . -25200))
-          ((name . \"PPT\") (dst . t) (offset . -25200)))
-    (name . \"LMT\\0PDT\\0PST\\0PWTPPT\\0\")
-    (leap ((offset . 1)  (point .   78796800.0))
-          ((offset . 2)  (point .   94694401.0))
-          ⋮
-          ((offset . 25) (point . 1341100824.0)))
-    (std nil nil nil nil t)
-    (gmt nil nil nil nil t)
-    (etla \"LMT\" \"PDT\" \"PST\" \"PWT\" \"PPT\")
+    (time  . [ -2717640704.0 -1633269760.0 … 2140678800.0 ])
+    (index . [ 2 1 … 2 ])
+    (zone  . [ ((name . \"LMT\") (dst)     (offset . -28378))
+               ((name . \"PDT\") (dst . t) (offset . -25200))
+               ((name . \"PST\") (dst)     (offset . -28800))
+               ((name . \"PWT\") (dst . t) (offset . -25200))
+               ((name . \"PPT\") (dst . t) (offset . -25200)) ])
+    (name  . \"LMT\\0PDT\\0PST\\0PWTPPT\\0\")
+    (leap  . [ ((offset . 1)  (point .   78796800.0))
+               ((offset . 2)  (point .   94694401.0))
+               ⋮
+               ((offset . 25) (point . 1341100824.0)) ])
+    (std   . [ nil nil nil nil t ])
+    (gmt   . [ nil nil nil nil t ])
+    (etla  . [ \"LMT\" \"PDT\" \"PST\" \"PWT\" \"PPT\" ])
     (posix . \"PST8PDT,M3.2.0,M11.1.0\"))\n
-The index and time lists are the same length - the time list contains a list of
-epoch times at which zone shifts occur, and the index list gives the zone
-into which the shift is occurring at that point (the indexth entry in the
-zone entry above)\n
+The index and time vectors are the same length - the time vector contains
+a list of epoch times at which zone shifts occur, and the index vector gives
+the zone into which the shift is occurring at that point (the indexth entry
+in the zone entry above)\n
 Notes:
  - The order of entries is not guaranteed
  - \\0 above indicates a NUL character (normally displayed as ^@)
@@ -244,6 +244,12 @@ See (man \"tzfile(5)\") for more detail."
                   cell   (assq :zone-data v2-data)
                   cell   (last cell))
             (setcdr cell (list (cons 'posix footer))))))
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ;; vectorise the (potentially) big lists in the zone data:
+    (mapc (lambda (c)
+            (and (consp c)
+                 (listp (cdr c))
+                 (setcdr c (apply 'vector (cdr c))))) info)
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     (setq rval (list (list (cons :header    (nreverse header))
                            (cons :zone-data (nreverse   info)))))
