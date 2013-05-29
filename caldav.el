@@ -152,3 +152,22 @@ ICAL-DATA can typically be parsed with functions like `icalendar--read-element'"
                                     (cons :caldav result))))
                  0 nil caldav-namespaces)
     (while (not done) (accept-process-output)) done))
+
+(defun caldav-ical-to-alist (ical &optional absolute url)
+  "Take a CalDAV/iCal data structure ICAL, as returned by `caldav-fetch-ical',
+and return an alist whose keys are the urls of the iCal containers and whose
+cdrs are the parsed iCal objects, as per `icalendar--read-element'.
+If ABSOLUTE is true, make the keys absolute using `caldav-absolute-url'
+and URL (or `caldav-default-url' if URL is nil)"
+  (mapcar (lambda (x &optional ical-url ical-text ical-data)
+            (setq i-url  (car x)
+                  i-text (cadr (memq caldav-ical-node x))
+                  i-data (with-temp-buffer
+                              (insert i-text)
+                              (goto-char (point-min))
+                              (icalendar--read-element nil nil)))
+            (if absolute
+                (setq i-url
+                      (caldav-absolute-url i-url (or url caldav-default-url))))
+            (cons i-url i-data))
+          (cdr (assq :caldav ical))))
