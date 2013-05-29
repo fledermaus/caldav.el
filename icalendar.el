@@ -2363,6 +2363,57 @@ the entry."
         (delete-char -1)))
   ;; return diary-file in case it has been changed interactively
   diary-file)
+;; ======================================================================
+;; write support - updating ical contents
+;; ======================================================================
+(defun icalendar--set-event-property (event prop value &optional coerce)
+  (let ((prop-list (nth 2 event)) cell cvalue)
+    ;; events MUST have a UID, which is always the 1st prop in the list
+    ;; so we can always splice values in at the cdr of the prop-list,
+    ;; likewise since we want delq of the UID cell to be a no-op, we
+    ;; can just delq without worrying about delq'ing the head of the list:
+    (setq cvalue (funcall (or coerce 'identity) value)
+          cell   (assq prop prop-list))
+    (if cvalue
+        (if cell
+            (setcdr (cdr cell) (cons cvalue nil))
+          (setcdr prop-list (cons (list prop nil cvalue) (cdr prop-list))))
+      ;; cvalue of `nil' means remove the value
+      (delq cell prop-list))))
+
+;; ======================================================================
+;; write support - serialising an ical structure:
+;; ======================================================================
+(defun icalendar--serialise-element (element)
+  (with-temp-buffer
+    (if (listp (car element))
+        (mapc 'icalendar--serialise-element-i element)
+      (icalendar--serialise-element-i element))
+    (buffer-substring-no-properties (point-min) (point-max))))
+
+(defun icalendar--serialise-props (props)
+  (while props
+    (insert ";" (symbol-name (car props)) "=" (cadr props))
+    (setq props (cddr props))))
+
+(defun icalendar--serialise-attribute (attr)
+  (insert (symbol-name (car attr)))
+  (icalendar--serialise-props (cadr attr))
+  (insert ":" (nth 2 attr) "\n"))
+
+(defun icalendar--serialise-element-i (element)
+  (let (x type prop attr data str)
+    (setq x    element
+          type (pop x)
+          prop (pop x)
+          attr (pop x)
+          data (pop x))
+    (insert "BEGIN:" (symbol-name type))
+    (icalendar--serialise-props prop)
+    (insert "\n")
+    (mapc 'icalendar--serialise-attribute attr)
+    (mapc 'icalendar--serialise-element-i data)
+    (insert "END:" (symbol-name type) "\n")))
 
 ;; ======================================================================
 ;; Examples
