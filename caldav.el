@@ -171,3 +171,68 @@ and URL (or `caldav-default-url' if URL is nil)"
                       (caldav-absolute-url i-url (or url caldav-default-url))))
             (cons i-url i-data))
           (cdr (assq :caldav ical))))
+
+(defun caldav-filter-apply-pred (ical-item attributes predicate)
+  (let (attr-val attr-pred attr-func)
+    (cond ((functionp predicate) (funcall predicate ical-item))  ;; whole item
+          ((symbolp   predicate) (assq predicate attributes))    ;; has attr
+          ;; attribute specific predicates
+          ((and (consp predicate)
+                (setq attr-val (nth 2 (assq (car predicate) attributes))))
+           (setq attr-pred (cdr predicate))
+           (cond ((stringp attr-pred) ;; regex or string equality
+                  (if (eq (aref attr-pred 0) ?~)
+                      (string-match (substring attr-pred 1) attr-val)
+                    (equal attr-pred attr-val)))
+                 ;; attr-specific predicate function
+                 ;; plus target value for said function
+                 ((consp attr-pred)
+                  (setq attr-func (car attr-pred))
+                  (if (functionp attr-func)
+                      (funcall attr-func attr-val (cdr attr-pred))))))
+          nil)))
+
+(defun caldav-filter-apply-predicates (ical-item predicates)
+  (let ((matched t) (attributes (nth 2 ical-item)))
+    (while (and matched predicates)
+      (setq matched
+            (caldav-filter-apply-pred ical-item attributes (car predicates))
+            predicates (cdr predicates)))
+    matched))
+
+(defun caldav-filter-items (ical type predicates &optional function)
+  "Take a CalDAV/iCal alist, as returned by `caldav-ical-to-alist' and
+filter it by TYPE (a symbol or list of symbols like 'VEVENT) and
+all the entries in PREDICATES, which may be as follows:\n
+    function - the function is called on the ical-data
+    symbol   - the ical object (eg event) must have said attribute (eg 'DTEND)
+    (symbol . attr-predicate) -
+      The attribute of the ical object specified by symbol must satisfy
+      attr-predicate. attr-predicate may be:
+        \"~string-regex\"  - a regex which is tested with string-match
+        \"string\"         - a string to match exactly
+        (function . value) - a function which will be called as:
+                             (function value-of-attribute value)\n
+If the iCal object satisfies all predicates (regexes and strings match,
+required attributes exist and function calls return a non-nil value)
+then FUNCTION is called on the (url . ical-data) cons cell.\n
+Omitting FUNCTION or passing nil is equivalent to passing 'identity.\n
+The return value is a list consisting of the return values of all the calls
+to FUNCTION."
+  (apply 'append
+         (mapcar
+          ;; calendar is a (url . ical-data) cons
+          (lambda (calendar &optional calendar-items)
+            ;; calendar-items is a list of (VEVENT… ) and so forth
+            ;; (ical objects) as per `icalendar--read-element'
+            (setq calendar-items (nth 3 (cadr calendar)))
+            (delq nil (mapcar
+                       (lambda (i &optional itype)
+                         (setq itype (car i))
+                         (and (cond ((listp type) (memq itype type))
+                                    (type         (eq   itype type)) t)
+                              (caldav-filter-apply-predicates i predicates)
+                              (if (functionp function) (funcall function i) i)))
+                       calendar-items)))
+          ical)))
+
