@@ -108,7 +108,38 @@ Returns an absolute url."
     (setq template (url-generic-parse-url (or template caldav-default-url)))
     (setf (url-filename template) url)
     (url-recreate-url template)))
+
+(defun caldav-put-ical (url ical &optional create)
+  "Given a CalDAV URL (which may be just the path component, in which case
+an absolute URL is constructed by combining it with `caldav-default-url'
+by way of `caldav-absolute-url'), serialise an rfc2445 object ICAL (as
+returned by `caldav-fetch-ical') and write it back to the CalDAV store.
+If CREATE is true, the calendar object MUST NOT already exist (the write
+will fail if it does). Similarly, if CREATE is nil or omitted, the object
+MUST already exist at the specified URL."
+  (let (ical-text)
+    (setq url       (caldav-absolute-url url)
+          ical-text (icalendar--serialise-element ical))
+    (dav-request url "PUT" nil ical-text
+                 (lambda (&rest args) (message "%s" (buffer-string)))
+                 nil '(((if create "If-None-Match" "If-Match") "*")))))
+
 (defun caldav-fetch-ical (&optional url start end)
+  "Return a a structure containing a list of rfc2445 ical objects,
+from URL (defaulting to `caldav-default-url'), optionally limiting
+your search to between START and END.\n
+START defaults to the beginnin of the current month,
+END defaults to one year after START.
+The returned valus is an alist of the form:\n
+   ((:from   start-datetime-srting)
+    (:to     end-datetime-string)
+    (:caldav caldav-list))\n
+Where caldav-list has entries of the form:\n
+    (\"/uri/path/to/ical/object.ics\"
+     DAV:getetag \"identity-string\"  ;; The object's DAV strong-entity tag
+     …                                ;; Any other attributes
+     `caldav-ical-node' \"ICAL-DATA\" )
+ICAL-DATA can typically be parsed with functions like `icalendar--read-element'"
   (let ((report-data (caldav-query start end)) from to query done)
     (setq from  (car   report-data)
           to    (cadr  report-data)
