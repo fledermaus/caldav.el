@@ -81,8 +81,9 @@ incrementing the year value, and recomposing it)."
   <C:filter>
     <C:comp-filter name='VCALENDAR'>
       <C:time-range start='%s' end='%s'/>
-      <C:comp-filter name='VEVENT'/>
-      <C:comp-filter name='VTODO'/>
+      <C:comp-filter name='VEVENT' />
+      <C:comp-filter name='VTODO'  />
+      <C:comp-filter name='VALARM' />
     </C:comp-filter>
   </C:filter>\n" start end)))
 
