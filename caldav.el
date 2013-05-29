@@ -30,7 +30,9 @@
 
 (defconst caldav-ns-caldav "urn:ietf:params:xml:ns:caldav")
 (defconst caldav-ical-node 
-  (intern (concat caldav-ns-caldav dav-ns-joint "calendar-data")))
+  (intern (concat caldav-ns-caldav dav-ns-joint "calendar-data"))
+  "The symbol which precedes the ical data blob inside `caldav-get-ical's
+return value")
 (defconst caldav-ns-dav    "DAV:")
 (defconst caldav-namespaces  `(("C" . ,caldav-ns-caldav)
                                ("D" . ,caldav-ns-dav   )))
@@ -61,6 +63,7 @@
     (apply 'encode-time now)))
 
 (defun caldav-report-time (time)
+  "Format a time value as an ISO-8601 date-time string."
   (format-time-string "%Y%m%dT%H%M%SUTC" time :utc))
 
 (defun caldav-query (&optional start end)
