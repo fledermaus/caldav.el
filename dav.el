@@ -450,7 +450,7 @@ though.
 HEADERS is an assoc list of extra headers to send in the request.
 
 NAMESPACES is an assoc list of (NAMESPACE . EXPANSION), and these are
-added to the <TAG> element.  The DAV=DAV: namespace is automatically
+added to the <TAG> element.  The D=DAV: namespace is automatically
 added to this list, so most requests can just pass in nil."
   ;; Take care of the default value for depth...
   (setq depth (or depth 0))
@@ -459,8 +459,8 @@ added to this list, so most requests can just pass in nil."
   (if (< depth 0)
       (setq depth "Infinity")
     (setq depth (int-to-string depth)))
-  (if (not (assoc "DAV" namespaces))
-      (setq namespaces (cons '("DAV" . "DAV:") namespaces)))
+  (if (not (assoc "D" namespaces))
+      (setq namespaces (cons '("D" . "DAV:") namespaces)))
 
   (let* ((url-request-extra-headers `(("Depth" . ,depth)
                                       ("Content-type" . "text/xml")
