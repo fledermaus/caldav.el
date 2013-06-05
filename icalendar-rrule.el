@@ -623,8 +623,8 @@ either 16:00:00 or 15:00:00 (depending on the date) in Europe/London."
       ;; start with the tasks explicit `UNTIL' value, falling back to the
       ;; explicit `UNTIL' in the call to this function and then the implicit
       ;; one year span we impose (as calendar views rarely exceed one year):
-      (if (setq until (assq 'UNTIL rrule))
-          (setq until (icalendar--decode-isodatetime until)
+      (if (setq until (cadr (assq 'UNTIL rrule)))
+          (setq until (icalendar--rr-decode-isodatetime until)
                 until (apply 'encode-time until))
         (if end
             (setq until end)
