@@ -229,8 +229,8 @@ to FUNCTION."
             (delq nil (mapcar
                        (lambda (i &optional itype)
                          (setq itype (car i))
-                         (and (cond ((listp type) (memq itype type))
-                                    (type         (eq   itype type)) t)
+                         (and (cond ((listp   type) (memq itype type))
+                                    ((symbolp type) (eq   itype type)) (t))
                               (caldav-filter-apply-predicates i predicates)
                               (if (functionp function) (funcall function i) i)))
                        calendar-items)))
