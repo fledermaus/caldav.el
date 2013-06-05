@@ -28,7 +28,8 @@ Values for TZ include:\n
     icalendar--rr-byhour
     icalendar--rr-byminute
     icalendar--rr-bysecond
-    icalendar--rr-bysetpos))
+    icalendar--rr-bysetpos
+    icalendar--rr-zonekludge))
 
 (defconst icalendar--rr-jumpsizes
   '((SECONDLY . 1     )
@@ -402,6 +403,11 @@ Negative values for N count backwards from the last week of the year"
 ;; defined in icalendar--rr-handlers (which is the same as defined in
 ;; RFC2445 (http://www.ietf.org/rfc/rfc2445.txt))
 ;; Lasciate ogne speranza, voi ch'intrate:
+(defun icalendar--rr-zonekludge (_r data _d tz _s _c _u target)
+  (let (cell olist)
+    (setq cell  (assq target data)
+          olist (cdr cell))
+    (mapc (lambda (o) (setcar (last o) tz)) olist)))
 
 (defun icalendar--rr-by-x (rule data _dtstart _start _count _until target x)
   (let (bset action olist period slot)
