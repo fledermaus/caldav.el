@@ -190,7 +190,7 @@ and URL (or `caldav-default-url' if URL is nil)"
                   (setq attr-func (car attr-pred))
                   (if (functionp attr-func)
                       (funcall attr-func attr-val (cdr attr-pred))))))
-          nil)))
+          (t nil))))
 
 (defun caldav-filter-apply-predicates (ical-item predicates)
   (let ((matched t) (attributes (nth 2 ical-item)))
