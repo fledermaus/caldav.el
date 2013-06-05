@@ -52,6 +52,29 @@ Values for TZ include:\n
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; utilities for rrule element parsing:
+(defun icalendar--rr-decode-isodatetime (isodatetimestring)
+  "Like `icalendar--decode-isodatetime', except we are explicitly
+not interested in any timezone info at this point. This is because
+for rrule manipulation we just want to make a series of ‘logical’
+shifts (eg if that isodatetimestring says 16:00:00, we actually
+want all subsequent events to be at 16:00:00 regardless of DST shifts)."
+  (let ((year  (read (substring isodatetimestring 0 4)))
+        (month (read (substring isodatetimestring 4 6)))
+        (day   (read (substring isodatetimestring 6 8)))
+        (hour   0)
+        (minute 0)
+        (second 0))
+    (when (> (length isodatetimestring) 12)
+      ;; hour/minute present
+      (setq hour   (read (substring isodatetimestring 9  11)))
+      (setq minute (read (substring isodatetimestring 11 13))))
+    (when (> (length isodatetimestring) 14)
+      ;; seconds present
+      (setq second (read (substring isodatetimestring 13 15))))
+    ;; create the decoded date-time
+    (list second minute hour day month year 0)))
+
+
 (defun icalendar--rr-ev-prop-attr (event prop attr &optional zone-map)
   "Extract a single rfc2445 event property attribute from EVENT, a parsed
 ical event. PROP and ATTR are symbols.
