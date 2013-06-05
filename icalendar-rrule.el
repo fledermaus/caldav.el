@@ -52,6 +52,21 @@ Values for TZ include:\n
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; utilities for rrule element parsing:
+(defun icalendar--rr-ev-prop-attr (event prop attr &optional zone-map)
+  "Extract a single rfc2445 event property attribute from EVENT, a parsed
+ical event. PROP and ATTR are symbols.
+ZONE-MAP is the map returned by `icalendar--convert-all-timezones'\n
+Returns the string value of the attribute, if found, or nil.
+If ZONE-MAP is supplied, and ATTR is 'TZID the timezone is looked up in
+ZONE-MAP as per `icalendar--find-time-zone' and that value is returned instead."
+  (let (attribs value)
+    (setq attribs (icalendar--get-event-property-attributes event prop)
+          value   (memq attr attribs))
+    ;; found a value, and looking at TZID, and we have zone map? convert:
+    (if (and value (eq 'TZID attr) zone-map)
+        (icalendar--find-time-zone value zone-map)
+      (cadr value))))
+
 (defun icalendar--rr-merge-date-dow (template date)
   "Move DATE forwards, 24 hours at a time (if necessary) to
 arrive at a date matching the day of week in TEMPLATE (which can be a
