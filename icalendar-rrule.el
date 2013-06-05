@@ -653,20 +653,16 @@ either 16:00:00 or 15:00:00 (depending on the date) in Europe/London."
            icalendar--rr-handlers)))
 
       (when rdate
-        (message "processing rdate: %S" rdate)
-        (let (eprops zone)
-          (setq eprops  (icalendar--get-event-property-attributes event 'RRULE)
-                zone    (icalendar--find-time-zone eprops zone-map)
-                rd-list (mapcar
-                         (lambda (x)
-                           (icalendar--decode-isodatetime x zone)) rdate)) ))
+        (setq rd-list (mapcar (lambda (x)
+                                (setq x (icalendar--rr-decode-isodatetime x))
+                                (setcar (last x) rzone) x)
+                              rdate)))
+
       (when exdate
-        (let (eprops zone)
-          (setq eprops  (icalendar--get-event-property-attributes event 'EXRULE)
-                zone    (icalendar--find-time-zone eprops zone-map)
-                ex-list (mapcar
-                         (lambda (x)
-                           (icalendar--decode-isodatetime x zone)) exdate)) ))
+        (setq ex-list (mapcar (lambda (x)
+                                (setq x (icalendar--rr-decode-isodatetime x))
+                                (setcar (last x) xzone) x)
+                              exdate)) )
 
       ;; sort the generated dates
       (let (rc-dates ex-dates rcell ecell dates e0)
