@@ -190,7 +190,7 @@ which may or may not result in a more workable date value."
         (nth 3 processed-time)) ))
 
 (defun icalendar--rr-byxxx-effect (rule-data by-type)
-  "Given RULE-DATA (as constructed internally by `icalendar--rr-occurences')
+  "Given RULE-DATA (as constructed internally by `icalendar--rr-occurrences')
 return :expands or :restricts depending on whether the application of the
 byxxx rule of type BY-TYPE should result in more or fewer event instances."
   (let ((r-type (cdr (assq :last-freq rule-data))))
@@ -541,7 +541,7 @@ Negative values for N count backwards from the last week of the year"
 ;; end of rrule part parser section.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun icalendar--rr-occurences (event zone-map &optional end)
+(defun icalendar--rr-occurrences (event zone-map &optional end tz)
   "Return a list of time values (as per `decode-time') at which EVENT has
 an instance. If there is no recurrence rule entry, then a list with a
 single entry (the DTSTART value) is returned.
