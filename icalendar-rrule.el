@@ -614,8 +614,9 @@ either 16:00:00 or 15:00:00 (depending on the date) in Europe/London."
           xzone    (or (icalendar--rr-ev-prop-attr event 'EXDATE 'TZID zone-map)
                        zone))
 
+    ;; no repeat rule and no static repeat list => there's only one occurrence
     (if (and (not rrule) (not rdate))
-        (list dtstart)
+        (list dtst_z)
       ;; we always need an `UNTIL' value, as we cannot otherwise work out when
       ;; to stop generating candidates.
       ;; (`COUNT' won't work for this: tl;dr: human calendars are insane)
