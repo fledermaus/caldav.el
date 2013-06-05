@@ -1,6 +1,19 @@
 ;; -*- lexical-binding: t -*-
 (eval-when-compile (require 'cl))
 
+(defmacro with-timezone (tz &rest body)
+  "Execute BODY with timezone TZ in effect (as set by `set-time-zone-rule').
+Values for TZ include:\n
+  a tzfile(5) string : eg \"Antarctica/South_Pole\"
+  a POSIX TZ string  : eg \"PST8PDT,M3.2.0,M11.1.0\"
+  t                  : UTC
+  nil                : no effect - use the current default"
+  (declare (indent 1))
+  `(let ((cz (getenv "TZ")) rv)
+     (set-time-zone-rule (or ,tz cz))
+     (setq rv ,@body)
+     (set-time-zone-rule cz) rv))
+
 (defconst icalendar--rr-freqs
   '(SECONDLY MINUTELY HOURLY DAILY WEEKLY MONTHLY YEARLY))
 
