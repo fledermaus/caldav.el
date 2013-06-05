@@ -134,6 +134,11 @@ like the 31st of February - we must still generate such dates as
 they provide the base-dates on which the byxxx rules operate,
 which may or may not result in a more workable date value."
   (let (x y m z)
+    ;; discard all zone info: we explicitly do not want to know about it
+    ;; at this point:
+    (if (< (length start-time) 7)
+        (setq start-time
+              (mapcar (lambda (n) (nth n start-time)) '(0 1 2 3 4 5 6))))
     (cond
      ;; no jump - DTSTART is always the returned value for this:
      ((zerop n) (setq x start-time))
@@ -141,7 +146,8 @@ which may or may not result in a more workable date value."
      ((setq x (assq step icalendar--rr-jumpsizes))
       (setq x (+ (float-time start) (* n (cdr x)))
             x (seconds-to-time x)
-            x (decode-time x)))
+            x (decode-time x))
+      (setf (nth 8 x) 0))
      ;; into the rigidly defined areas of doubt and uncertainty:
      ;; jump by n months. What is a month anyway? "It depends"
      ((eq 'MONTHLY step)
@@ -162,10 +168,19 @@ which may or may not result in a more workable date value."
       (setq x (copy-sequence start-time)
             y (nth 5 x))
       (setf (nth 5 x) (+ n y)) ))
+
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; if we crossed a DST boundary, tweak the time to compensate:
     ;; (this does not apply to recurrences of finer granularity than 1 day):
     (if (memq step '(DAILY WEEKLY MONTHLY YEARLY))
         (setq x (icalendar--rr-merge-date start-time x :sec :min :hour)))
+
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ;; discard any generated zone info, which will be bogus at this point.
+    ;; keep the day of the week though, that's potentially intersting:
+    (if (< (length start-time) 7)
+        (setq start-time
+              (mapcar (lambda (n) (nth n start-time)) '(0 1 2 3 4 5 6))))
     x))
 
 (defun icalendar--rr-day-possible-p (candidate-time)
