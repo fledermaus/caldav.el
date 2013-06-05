@@ -409,7 +409,7 @@ Negative values for N count backwards from the last week of the year"
           olist (cdr cell))
     (mapc (lambda (o) (setcar (last o) tz)) olist)))
 
-(defun icalendar--rr-by-x (rule data _dtstart _start _count _until target x)
+(defun icalendar--rr-by-x (rule data _dtstart _tz _start _count _until target x)
   (let (bset action olist period slot)
     (cond ((eq 'BYSECOND x) (setq period 'SECONDLY slot 0))
           ((eq 'BYMINUTE x) (setq period 'MINUTELY slot 1))
@@ -428,19 +428,19 @@ Negative values for N count backwards from the last week of the year"
       (setcdr (assq :last-freq data) period)
       (setcdr (assq target     data)  olist)) ))
 
-(defun icalendar--rr-bysecond (rule data dtstart start count until target)
-  (icalendar--rr-by-x rule data dtstart start count until target 'BYSECOND))
+(defun icalendar--rr-bysecond (rule data dtstart tz start count until target)
+  (icalendar--rr-by-x rule data dtstart tz start count until target 'BYSECOND))
 
-(defun icalendar--rr-bysetpos (rule data dtstart start count until target)
-  (ignore rule data dtstart start count until target))
+(defun icalendar--rr-bysetpos (rule data dtstart tz start count until target)
+  (ignore rule data dtstart tz start count until target))
 
-(defun icalendar--rr-byminute (rule data dtstart start count until target)
-  (icalendar--rr-by-x rule data dtstart start count until target 'BYMINUTE))
+(defun icalendar--rr-byminute (rule data dtstart tz start count until target)
+  (icalendar--rr-by-x rule data dtstart tz start count until target 'BYMINUTE))
 
-(defun icalendar--rr-byhour (rule data dtstart start count until target)
-  (icalendar--rr-by-x rule data dtstart start count until target 'BYHOUR))
+(defun icalendar--rr-byhour (rule data dtstart tz start count until target)
+  (icalendar--rr-by-x rule data dtstart tz start count until target 'BYHOUR))
 
-(defun icalendar--rr-byday (rule data dtstart _start _count _until target)
+(defun icalendar--rr-byday (rule data dtstart _tz _start _count _until target)
   (let (bset action olist period)
     (when (setq bset (cadr (assq 'BYDAY rule)))
       (setq action (icalendar--rr-byxxx-effect data 'DAILY)
@@ -456,7 +456,7 @@ Negative values for N count backwards from the last week of the year"
       (setcdr (assq :last-freq data) 'DAILY)
       (setcdr (assq target     data)  olist)) ))
 
-(defun icalendar--rr-bymonthday (rule data _dtstart _start _count _until target)
+(defun icalendar--rr-bymonthday (rule data _dtstart _tz _start _count _until target)
   (let (bset olist dlist action)
     (when (setq bset (cadr (assq 'BYMONTHDAY rule)))
       (setq bset   (icalendar--rr-byxxx-to-data bset)
@@ -480,7 +480,7 @@ Negative values for N count backwards from the last week of the year"
 
 ;; only interpreting BYYEARDAY for YEARLY repeats. Not sure what it
 ;; would mean in other contexts.
-(defun icalendar--rr-byyearday (rule data dtstart _start _count _until target)
+(defun icalendar--rr-byyearday (rule data dtstart _tz _start _count _until target)
   (let (bset olist ylist dlist)
     (when (and (eq (cdr (assq :last-freq data)) 'YEARLY)
                (setq bset (cadr (assq 'BYYEARDAY rule))))
@@ -496,7 +496,7 @@ Negative values for N count backwards from the last week of the year"
       (setcdr (assq target     data) dlist)) ))
 
 ;; byweekno only applies to yearly rules (per RFC2445)
-(defun icalendar--rr-byweekno (rule data dtstart _start _count _until target)
+(defun icalendar--rr-byweekno (rule data dtstart _tz _start _count _until target)
   (let (bset olist wlist)
     (when (and (eq (cdr (assq :last-freq data)) 'YEARLY)
                (setq bset (cadr (assq 'BYWEEKNO rule))))
@@ -515,10 +515,10 @@ Negative values for N count backwards from the last week of the year"
       (setcdr (assq :last-freq data) 'WEEKLY)
       (setcdr (assq target     data)   wlist)) ))
 
-(defun icalendar--rr-bymonth (rule data dtstart start count until target)
-  (icalendar--rr-by-x rule data dtstart start count until target 'BYMONTH))
+(defun icalendar--rr-bymonth (rule data dtstart start tz count until target)
+  (icalendar--rr-by-x rule data dtstart tz start count until target 'BYMONTH))
 
-(defun icalendar--rr-interval (rule data dtstart start _count until target)
+(defun icalendar--rr-interval (rule data dtstart _tz start _count until target)
   (let (freq interval occurs (j 0) next (last start))
     (setq interval (or (cadr (assq 'INTERVAL rule)) 1)
           freq     (cdr (assq :freq data)))
@@ -539,7 +539,7 @@ Negative values for N count backwards from the last week of the year"
     ;; store the basic list of event-occurrences
     (setcdr data (cons (cons target occurs) (cdr data))) ))
 
-(defun icalendar--rr-freq (rule data _dtstart _start _count _until _target)
+(defun icalendar--rr-freq (rule data _dtstart _tz _start _count _until _target)
   (let (freq)
     (when (setq freq (intern-soft (cadr (assq 'FREQ rule))))
       (setcdr (assq :last-freq data) freq)
@@ -599,18 +599,23 @@ supplied, a default of 1 year from the DTSTART value is assumed."
 
       (setq edata (list t '(:freq nil) '(:last-freq nil)))
 
-      (when rrule
-        (mapc (lambda (handler)
-                (funcall handler rrule edata dtstart start count until :occurs)
-                ;;(message "rrule %S -> \n%S\n--\n" handler edata)
-                )
-              icalendar--rr-handlers))
-      (when exrule
-        (mapc (lambda (handler)
-                (funcall handler exrule edata dtstart start count until :exclude)
-                ;;(message "exrule %S -> \n%S\n--\n" handler edata)
-                )
-              icalendar--rr-handlers))
+      ;; rrule and exrule are pretty similar: the parts that are not permitted
+      ;; in exrules (COUNT, UNTIL etc) are not handled in the parser list so
+      ;; we can just munge them both the same way here:
+      (with-timezone t ;; enforce UTC calculations for this block
+        (when rrule
+          (mapc
+           (lambda (handler)
+             (funcall handler rrule edata dtstart zone start count until
+                      :occurs))
+           icalendar--rr-handlers))
+
+        (when exrule
+          (mapc
+           (lambda (handler)
+             (funcall handler exrule edata dtstart zone start count until
+                      :exclude))
+           icalendar--rr-handlers)))
 
       (when rdate
         (message "processing rdate: %S" rdate)
