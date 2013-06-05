@@ -557,28 +557,62 @@ If the recurrence rule exists, but specifies neither a COUNT value nor an
 UNTIL entry, then instances are only generated upto END (an emacs time value
 as per `encode-time').\n
 If neither limiting rule part (COUNT, DTEND) is specified and END is not
-supplied, a default of 1 year from the DTSTART value is assumed."
-  (let (zone dtstart eprops rrule-text rrule start edata count until
-        rd-list ex-list rdate-text exdate-txt)
-    (setq estart     (icalendar--get-event-property event 'DTSTART)
-          eprops     (icalendar--get-event-property-attributes event 'DTSTART)
-          zone       (icalendar--find-time-zone eprops zone-map)
-          rdate-text (icalendar--get-event-property event 'RDATE)
-          rrule-text (icalendar--get-event-property event 'RRULE)
-          exdate-txt (icalendar--get-event-property event 'EXDATE)
-          exrule-txt (icalendar--get-event-property event 'EXRULE)
-          rdate      (split-string (or rdate-text "") "," t)
-          exdate     (split-string (or exdate-txt "") "," t)
-          exrule     (icalendar--split-value exrule-txt)
-          rrule      (icalendar--split-value rrule-text))
-
-    ;; get the decomposed start time (necessary to fill in any time elements
+supplied, a default of 1 year from the DTSTART value is assumed.\n
+TZ, if supplied, gives a TZ environment variable value (either
+tzfile(5) or POSIX style) in which you actually want the occurrences.\n
+The default is to give you occurrences in the zone they are scheduled in.
+eg: A US/Pacific daily event scheduled at 08:00:00 would come out at
+either 16:00:00 or 15:00:00 (depending on the date) in Europe/London."
+  (let (edata   ;; event-data - accumulate calculated/extracted info
+        dtst_z  ;; start date (as per `decode-time')
+        dtstart ;; start date (as per `decode-time') sans zone info
+        dttext  ;;
+        munge   ;; date mangling function
+        start   ;; ibid       (as per `encode-time')
+        zone    ;; POSIX timezone string for start date (default zone)
+        count   ;; number of repetitions
+        until   ;; last acceptable date (as per `encode-time')
+        rrule   ;; repeat-rule, per rfc2445 split by "," into components
+        rdate   ;; explicit repeat spec, per rfc2445, split by ","
+        exdate  ;; explicit exclude spec, per rfc2445, split by ","
+        rd-list ;; list of explicit repeat   date-times (per `decode-time')
+        ex-list ;; list of explicit excluded date-times (per `decode-time')
+        rzone   ;; POSIX TZ string for rdate parsing
+        xzone   ;; POSIX TZ string for exdate parsing
+        olist)  ;; list of occurrences
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ;; the decomposed start time is necessary to fill in any time elements
     ;; which the rrule does not specify (eg if the hour is missing from the
     ;; rrule, get it from the DTSTART entry for the event))
-    ;; also work out the time-value for the start and the COUNT value (if any)
-    (setq dtstart (icalendar--decode-isodatetime estart nil zone)
-          start   (apply 'encode-time dtstart)
-          count   (assq 'COUNT rrule))
+    (setq dttext  (icalendar--get-event-property event 'DTSTART)
+          zone    (icalendar--rr-ev-prop-attr event 'DTSTART 'TZID zone-map)
+          dtst_z  (icalendar--decode-isodatetime dttext nil zone)
+          ;; start needs to respect the timezone, since it is a UTC co-ord
+          start   (if dtst_z (apply 'encode-time dtst_z))
+          ;; but dtstart should omit TZ info, it is the human-readable parts:
+          dtstart (icalendar--rr-decode-isodatetime dttext)
+
+          ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+          ;; repeat rule spec + exclude rule spec
+          rrule   (icalendar--get-event-property event 'RRULE)
+          rrule   (icalendar--split-value rrule)
+          count   (cadr (assq 'COUNT rrule))
+          count   (if count (string-to-number count 10))
+          exrule  (icalendar--get-event-property event 'EXRULE)
+          exrule  (icalendar--split-value exrule)
+
+          ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+          ;; repeate dates (fixed list)
+          rdate   (icalendar--get-event-property event 'RDATE)
+          rdate   (split-string (or rdate "") "," t)
+          rzone   (or (icalendar--rr-ev-prop-attr event 'RDATE 'TZID zone-map)
+                      zone)
+          ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+          ;; excluded dates (fixed list)
+          exdate   (icalendar--get-event-property event 'EXDATE)
+          exdate   (split-string (or exdate "") "," t)
+          xzone    (or (icalendar--rr-ev-prop-attr event 'EXDATE 'TZID zone-map)
+                       zone))
 
     (if (and (not rrule) (not rdate))
         (list dtstart)
