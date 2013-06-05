@@ -711,7 +711,14 @@ either 16:00:00 or 15:00:00 (depending on the date) in Europe/London."
           (if rcell
               (setcdr rcell rc-dates)
             (setcdr edata (cons (cons :occurs rc-dates) (cdr edata)))))
-      (cdr (assq :occurs edata))) ))
+
+      (setq olist (cdr (assq :occurs edata))
+            munge (lambda (o) (decode-time (apply 'encode-time o))))
+
+      (with-timezone (or tz zone)
+        (setq olist (mapcar munge olist)))
+
+      olist) ))
 
 (setq tmp-ical
       '((VCALENDAR nil
