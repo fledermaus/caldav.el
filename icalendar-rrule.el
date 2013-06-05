@@ -552,7 +552,7 @@ Negative values for N count backwards from the last week of the year"
 an instance. If there is no recurrence rule entry, then a list with a
 single entry (the DTSTART value) is returned.
 ZONE-MAP should be the timezone map harvested from the calendar with
-icalendar--rr-timezones.\n
+`icalendar--convert-all-timezones'.\n
 If the recurrence rule exists, but specifies neither a COUNT value nor an
 UNTIL entry, then instances are only generated upto END (an emacs time value
 as per `encode-time').\n
