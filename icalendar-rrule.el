@@ -91,10 +91,12 @@ ZONE-MAP as per `icalendar--find-time-zone' and that value is returned instead."
         (icalendar--find-time-zone value zone-map)
       (cadr value))))
 
-(defun icalendar--rr-merge-date-dow (template date)
+(defun icalendar--rr-merge-date-dow (template date &optional month)
   "Move DATE forwards, 24 hours at a time (if necessary) to
 arrive at a date matching the day of week in TEMPLATE (which can be a
 `decode-time' value or an integer between 0 and 6 (inclusive)).\n
+If MONTH is specified, the generated date must be in MONTH (1-12)
+or nil will be returned.
 Retruns a decode-time value (which may be the original if no shift occurred)."
   (let ((dow (if (listp template) (nth 6 template) template))
         epoch old new-date)
@@ -106,7 +108,9 @@ Retruns a decode-time value (which may be the original if no shift occurred)."
             jump     (if (< jump 0) (+ 7 jump) jump)
             epoch    (+ (* 86400 jump) epoch)
             new-date (decode-time (seconds-to-time epoch)))
-      new-date)))
+      (if month
+          (if (eq (nth 4 new-date) month) new-date)
+          new-date))))
 
 (defun icalendar--rr-merge-date (template new-date &rest slots)
   "Merge two dates (`decode-time' values) : Values from TEMPLATE corresponding
@@ -236,13 +240,14 @@ byxxx rule of type BY-TYPE should result in more or fewer event instances."
     (cons n (decode-time (seconds-to-time start))) ))
 
 (defun icalendar--rr-weekdays-in (dt period day)
-  (let (start time date finish dlist (year (nth 5 dt)))
+  (let (start time date finish dlist (year (nth 5 dt)) keep)
     (cond ((eq period 'YEARLY)
            (setq start  (icalendar--rr-nth-day year  1 dt)
                  finish (icalendar--rr-nth-day year -1 dt)))
           ((eq period 'MONTHLY)
            (setq start  (icalendar--rr-monthday dt  1)
-                 finish (icalendar--rr-monthday dt -1)))
+                 finish (icalendar--rr-monthday dt -1)
+                 keep   (nth 4 dt)))
           ((eq period 'WEEKLY)
            (setq start  (icalendar--rr-day-to-weekno dt)
                  finish (icalendar--rr-nth-week year (1+ (car start)))
@@ -252,16 +257,20 @@ byxxx rule of type BY-TYPE should result in more or fewer event instances."
             time   (float-time (apply 'encode-time date  ))
             finish (float-time (apply 'encode-time finish)))
       (while (<= time finish)
-        (setq date  (decode-time (seconds-to-time time))
-              date  (icalendar--rr-merge-date-dow day date)
-              date  (icalendar--rr-merge-date dt date :sec :min :hour)
-              dlist (cons date dlist)
-              time  (+  604800  time))))
+        (if (setq date  (decode-time (seconds-to-time time))
+                  date  (icalendar--rr-merge-date-dow day date keep))
+            (setq date  (icalendar--rr-merge-date dt date :sec :min :hour)
+                  dlist (cons date dlist)))
+        (setq time (+ 604800 time))))
     dlist))
 
 (defun icalendar--rr-date-< (d0 d1)
   (time-less-p (apply 'encode-time d0)
                (apply 'encode-time d1)))
+
+(defun icalendar--rr-date-= (d0 d1)
+  (equal (apply 'encode-time d0)
+         (apply 'encode-time d1)))
 
 (defun icalendar--rr-nth-weekday-in (dt period day)
   (let (dlist n size)
@@ -510,7 +519,8 @@ Negative values for N count backwards from the last week of the year"
             (mapcar
              (lambda (dt)
                (icalendar--rr-merge-date dtstart dt :sec :min :hour :dow))
-             wlist))
+             wlist)
+            wlist (delq nil wlist))
       (setcdr data (cons (cons :byweekno bset) (cdr data)))
       (setcdr (assq :last-freq data) 'WEEKLY)
       (setcdr (assq target     data)   wlist)) ))
