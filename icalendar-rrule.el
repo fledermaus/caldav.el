@@ -360,7 +360,7 @@ inspected) return the highest valid day-of-month in that month."
             epoch    (+ (* 86400 m) origin)
             new-date (decode-time (seconds-to-time epoch)))
       ;; if we jumped to a valid date, merge the time back in:
-      (if (eq (nth 5 dtstart) (nth 5 new-date))
+      (if (eq (nth 5 new-date) year)
           (if dtstart
               (icalendar--rr-merge-date dtstart new-date :sec :min :hour)
             new-date)
