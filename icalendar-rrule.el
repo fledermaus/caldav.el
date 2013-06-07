@@ -649,7 +649,8 @@ either 16:00:00 or 15:00:00 (depending on the date) in Europe/London."
           (incf (nth 5 end))
           (setq until (apply 'encode-time end))))
 
-      (setq edata (list t '(:freq nil) '(:last-freq nil)))
+      (setq edata (list t '(:freq nil) '(:last-freq nil))
+            munge (lambda (o) (decode-time (apply 'encode-time o))))
 
       ;; rrule and exrule are pretty similar: the parts that are not permitted
       ;; in exrules (COUNT, UNTIL etc) are not handled in the parser list so
