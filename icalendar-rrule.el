@@ -282,7 +282,7 @@ byxxx rule of type BY-TYPE should result in more or fewer event instances."
           size  (length dlist))
     (if (> (abs n) size)
         nil
-      (setq n     (if (< n 0) (+ size n 1) (1- n))
+      (setq n     (if (< n 0) (+ size n) (1- n))
             dlist (sort dlist 'icalendar--rr-date-<))
       (list (nth n dlist))) ))
 
