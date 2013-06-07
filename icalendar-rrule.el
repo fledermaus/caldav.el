@@ -700,8 +700,11 @@ either 16:00:00 or 15:00:00 (depending on the date) in Europe/London."
         ;; DTSTART is grandfathered in to the occurrence list
         ;; even if the recur ruleset would exclude it.
         ;; only EXRULE and EXDATE can remove DTSTART from the list:
-        (if (not (equal (car rc-dates) dtstart))
-            (setq rc-dates (cons dtstart rc-dates)))
+        (let (adjusted-start)
+          (setq adjusted-start (copy-sequence dtstart))
+          (setcar (last adjusted-start) zone)
+          (if (not (icalendar--rr-date-= (car rc-dates) adjusted-start))
+              (setq rc-dates (cons adjusted-start rc-dates))))
 
         ;; push the sorted exclude dates back into the data structure:
         (if ecell (setcdr ecell ex-dates))
