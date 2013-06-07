@@ -1,5 +1,7 @@
 ;; -*- lexical-binding: t -*-
-(eval-when-compile (require 'cl))
+(eval-and-compile (require 'cl))
+
+(require 'icalendar)
 
 (defmacro with-timezone (tz &rest body)
   "Execute BODY with timezone TZ in effect (as set by `set-time-zone-rule').
@@ -730,3 +732,4 @@ either 16:00:00 or 15:00:00 (depending on the date) in Europe/London."
 
       olist) ))
 
+(provide 'icalendar-rrule)
