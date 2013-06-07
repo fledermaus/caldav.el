@@ -684,9 +684,16 @@ either 16:00:00 or 15:00:00 (depending on the date) in Europe/London."
 
       ;; sort the generated dates
       (let (rc-dates ex-dates rcell ecell dates e0)
-        (setq rcell    (assq :occurs  edata)
+        (setq rcell    (assq :occurs edata)
               rc-dates (cdr rcell)
-              rc-dates (append rd-list rc-dates)
+              rc-dates (sort rc-dates 'icalendar--rr-date-<))
+
+        ;; strip out any recurrence rule dates < the start date
+        (while (icalendar--rr-date-< (car rc-dates) dtstart)
+          (setq rc-dates (cdr rc-dates)))
+        ;; note that fixed dates are allowed to precede th start date
+
+        (setq rc-dates (append rd-list rc-dates)
               rc-dates (sort rc-dates 'icalendar--rr-date-<)
               ecell    (assq :exclude edata)
               ex-dates (cdr ecell)
