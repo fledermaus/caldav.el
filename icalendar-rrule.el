@@ -729,8 +729,19 @@ either 16:00:00 or 15:00:00 (depending on the date) in Europe/London."
               (setcdr rcell rc-dates)
             (setcdr edata (cons (cons :occurs rc-dates) (cdr edata)))))
 
-      (setq olist (cdr (assq :occurs edata))
-            munge (lambda (o) (decode-time (apply 'encode-time o))))
+      (setq olist (cdr (assq :occurs edata)))
+
+      (if count
+          (let (tmp)
+            (while (and (< (length tmp) count) olist)
+              (setq tmp   (cons (car olist) tmp)
+                    olist (cdr olist)))
+            (setq olist (nreverse tmp))))
+
+      (when until
+        (setq until (decode-time until))
+        (setq olist
+              (delete-if (lambda (o) (icalendar--rr-date-< until o)) olist)))
 
       (with-timezone (or tz zone)
         (setq olist (mapcar munge olist)))
