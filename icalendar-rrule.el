@@ -530,10 +530,11 @@ Negative values for N count backwards from the last week of the year"
 (defun icalendar--rr-bymonth (rule data dtstart start tz count until target)
   (icalendar--rr-by-x rule data dtstart tz start count until target 'BYMONTH))
 
-(defun icalendar--rr-interval (rule data dtstart _tz start _count until target)
+(defun icalendar--rr-interval (rule data dtstart _tz start count until target)
   (let (freq interval occurs (j 0) next (last start))
     (setq interval (or (cadr (assq 'INTERVAL rule)) 1)
           freq     (cdr (assq :freq data)))
+    (if (stringp interval) (setq interval (string-to-number interval 10)))
     (setcdr data (cons (cons :interval interval) (cdr data)))
     ;; we always generate all base event times for the date range in question:
     ;; even for count limited rules: we do this because we cannot know until
@@ -542,14 +543,18 @@ Negative values for N count backwards from the last week of the year"
     ;; should be discarded (eg a 31st dtstart with a `BYDAY' of 15,27) will
     ;; generate acceptable dates in all months, even though there's no 31st
     ;; in half of them.
-    ;; tl;dr → ignore `COUNT' at this stage, assume an `UNTIL' value exists:
+    (when count
+      (setq until (icalendar--rr-jump (* count interval 2) freq dtstart start)
+            until (apply 'encode-time until)))
     (while last
-      (setq next (icalendar--rr-jump j freq dtstart start) j (1+ j) last nil)
+      (setq next (icalendar--rr-jump (* j interval) freq dtstart start)
+            j    (1+ j)
+            last nil)
       (if (<= (float-time (apply 'encode-time next))
               (float-time until))
           (setq occurs (cons next occurs) last next)))
-    ;; store the basic list of event-occurrences
-    (setcdr data (cons (cons target occurs) (cdr data))) ))
+  ;; store the basic list of event-occurrences
+  (setcdr data (cons (cons target occurs) (cdr data))) ))
 
 (defun icalendar--rr-freq (rule data _dtstart _tz _start _count _until _target)
   (let (freq)
