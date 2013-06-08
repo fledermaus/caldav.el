@@ -184,11 +184,10 @@ which may or may not result in a more workable date value."
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; discard any generated zone info, which will be bogus at this point.
-    ;; keep the day of the week though, that's potentially intersting:
-    (if (< (length start-time) 7)
-        (setq start-time
-              (mapcar (lambda (n) (nth n start-time)) '(0 1 2 3 4 5 6))))
-    x))
+    (if (> (length x) 6)
+        (setq x (mapcar (lambda (n) (nth n x)) '(0 1 2 3 4 5))))
+    (append x (list 0))))
+
 
 (defun icalendar--rr-day-possible-p (candidate-time)
   (let ((processed-time))
