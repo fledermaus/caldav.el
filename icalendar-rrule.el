@@ -143,9 +143,9 @@ which may or may not result in a more workable date value."
   (let (x y m z)
     ;; discard all zone info: we explicitly do not want to know about it
     ;; at this point:
-    (if (< (length start-time) 7)
+    (if (> (length start-time) 6)
         (setq start-time
-              (mapcar (lambda (n) (nth n start-time)) '(0 1 2 3 4 5 6))))
+              (mapcar (lambda (n) (nth n start-time)) '(0 1 2 3 4 5))))
     (cond
      ;; no jump - DTSTART is always the returned value for this:
      ((zerop n) (setq x start-time))
