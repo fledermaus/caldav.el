@@ -603,11 +603,9 @@ either 16:00:00 or 15:00:00 (depending on the date) in Europe/London."
     (setq dttext  (icalendar--get-event-property event 'DTSTART)
           zone    (icalendar--rr-ev-prop-attr event 'DTSTART 'TZID zone-map)
           dtst_z  (icalendar--decode-isodatetime dttext nil zone)
-          ;; start needs to respect the timezone, since it is a UTC co-ord
-          start   (if dtst_z (apply 'encode-time dtst_z))
-          ;; but dtstart should omit TZ info, it is the human-readable parts:
+          ;; dtstart should omit TZ info, it is the human-readable parts:
           dtstart (icalendar--rr-decode-isodatetime dttext)
-
+          start   (if dtstart (apply 'encode-time dtstart))
           ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
           ;; repeat rule spec + exclude rule spec
           rrule   (icalendar--get-event-property event 'RRULE)
