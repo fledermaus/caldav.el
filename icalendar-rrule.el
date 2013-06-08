@@ -631,6 +631,7 @@ either 16:00:00 or 15:00:00 (depending on the date) in Europe/London."
     ;; no repeat rule and no static repeat list => there's only one occurrence
     (if (and (not rrule) (not rdate))
         (list dtst_z)
+      ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
       ;; start with the tasks explicit `UNTIL' value, falling back to the
       ;; explicit `UNTIL' in the call to this function and then the implicit
       ;; one year span we impose (as calendar views rarely exceed one year):
