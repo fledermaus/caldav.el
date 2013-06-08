@@ -27,8 +27,6 @@
 ;;; Code:
 (require 'bindat)
 
-(defvar last)
-
 (defvar tzinfo-directory "/usr/share/zoneinfo"
   "Directory where zoneinfo rules may be found")
 
@@ -193,7 +191,7 @@ Notes:
 See (man \"tzfile(5)\") for more detail."
   (let (header info (tzinfo-data-offset (or v2-offset 0)) name v2-data rval)
     (setq header (bindat-unpack tzinfo-spec-header data tzinfo-data-offset))
-    (mapc (lambda (x &optional key repeat spec munge val cell)
+    (mapc (lambda (x &optional key repeat spec munge val)
             (setq key    (aref x 0)
                   repeat (aref x 1)
                   repeat (cdr (assq repeat header))
@@ -261,7 +259,7 @@ See (man \"tzfile(5)\") for more detail."
 variable: either a standard zone such as \"Antarctica/South_Pole\" or the
 full path to a TZ info zone file).\n
 See also: (man \"tzfile(5)\") and `tzinfo-process-blob'."
-  (let (data file tz)
+  (let (data file)
     (setq file (expand-file-name zone tzinfo-directory)
           data (with-temp-buffer
                  (set-buffer-multibyte nil)
