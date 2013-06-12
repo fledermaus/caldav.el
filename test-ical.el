@@ -25,4 +25,8 @@
             (test-ical-print-event e zone-map))
           (icalendar--all-events ical-data)) ))
 
-;; (test-ical-print-events "./data/rfc2445examples.ics")
+;; (test-ical-print-events "./data/rfc2445-15min-x6.ics")
+;; (test-ical-print-events "./data/rfc2445-january.ics")
+;; (test-ical-print-events "./data/rfc2445-monthly-pen-penultimate-day.ics")
+;; (test-ical-print-events "./data/rfc2445-yearly-yeardays.ics")
+;; (test-ical-print-events "./data/rfc2445-3rd-of-3-for-3-months.ics")
