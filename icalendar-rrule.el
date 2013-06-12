@@ -31,7 +31,8 @@ Values for TZ include:\n
     icalendar--rr-byminute
     icalendar--rr-bysecond
     icalendar--rr-bysetpos
-    icalendar--rr-zonekludge))
+    icalendar--rr-zonekludge
+    icalendar--rr-flatten))
 
 (defconst icalendar--rr-jumpsizes
   '((SECONDLY . 1     )
@@ -407,6 +408,9 @@ Negative values for N count backwards from the last week of the year"
             result (+ (* 604800 m) start)
             result (decode-time (seconds-to-time result))) )))
 
+(defun icalendar--rr-apply-rule-to-group (olist rule)
+  (delq nil (mapcar (lambda (o) (delq nil (mapcar rule o))) olist)))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; RECUR rule part parsers.
 ;; these parsers rely on being called on a gven event in the order
@@ -414,13 +418,21 @@ Negative values for N count backwards from the last week of the year"
 ;; RFC2445 (http://www.ietf.org/rfc/rfc2445.txt))
 ;; Lasciate ogne speranza, voi ch'intrate:
 (defun icalendar--rr-zonekludge (_r data _d tz _s _c _u target)
+  (let (cell olist func)
+    (setq cell  (assq target data)
+          olist (cdr cell)
+          func  (lambda (o) (setcar (last o) tz)))
+    (icalendar--rr-apply-rule-to-group olist func)))
+
+(defun icalendar--rr-flatten (_r data _d _tz _s _c _u target)
   (let (cell olist)
     (setq cell  (assq target data)
-          olist (cdr cell))
-    (mapc (lambda (o) (setcar (last o) tz)) olist)))
+          olist (cdr cell)
+          olist (delq nil (apply 'nconc olist)))
+    (setcdr (assq target data) olist)))
 
 (defun icalendar--rr-by-x (rule data _dtstart _tz _start _count _until target x)
-  (let (bset action olist period slot)
+  (let (bset action olist period slot func)
     (cond ((eq 'BYSECOND x) (setq period 'SECONDLY slot 0))
           ((eq 'BYMINUTE x) (setq period 'MINUTELY slot 1))
           ((eq 'BYHOUR   x) (setq period 'HOURLY   slot 2))
@@ -429,11 +441,14 @@ Negative values for N count backwards from the last week of the year"
       (setq action (icalendar--rr-byxxx-effect data period)
             bset   (icalendar--rr-byxxx-to-data bset)
             olist  (cdr (assq target data))
-            olist  (cond ((eq :expands action)
-                          (icalendar--rr-expand-occurlist slot bset olist))
+            func   (cond ((eq :expands action)
+                          (lambda (o)
+                            (icalendar--rr-expand-occurlist slot bset o)))
                          ((eq :restricts action)
-                          (delete-if-not (lambda (dt)
-                                           (memq (nth slot dt) bset)) olist))))
+                          (lambda (o)
+                            (delete-if-not (lambda (dt)
+                                             (memq (nth slot dt) bset)) o))))
+            olist  (mapcar func olist))
       (setcdr data (cons (cons :bymonth (nconc bset action)) (cdr data)))
       (setcdr (assq :last-freq data) period)
       (setcdr (assq target     data)  olist)) ))
@@ -441,8 +456,36 @@ Negative values for N count backwards from the last week of the year"
 (defun icalendar--rr-bysecond (rule data dtstart tz start count until target)
   (icalendar--rr-by-x rule data dtstart tz start count until target 'BYSECOND))
 
-(defun icalendar--rr-bysetpos (rule data dtstart tz start count until target)
-  (ignore rule data dtstart tz start count until target))
+(defun icalendar--rr-nth (n set &optional size)
+  (or size (setq size (length set)))
+  (cond ((> n 0) (setq n (- n    1)))
+        ((< n 0) (setq n (+ size n)))
+        (t (setq n nil)))
+  (if (and n (>= n 0) (< n size))
+      (nth n set)))
+
+(defun icalendar--rr-subset (olist nthlist)
+  "For a list of ordinal values NTHLIST (-N to 1, 1 to N)
+return the members of OLIST that correspond to those offsets.
+Negative offsets count from the end of OLIST.
+Out-of-range values are omitted."
+  (let (subset len)
+    (setq len (length olist))
+    (mapc (lambda (n &optional v)
+            (if (setq v (icalendar--rr-nth n olist len))
+                (setq subset (cons v subset)))) nthlist)
+    (nreverse subset)))
+
+(defun icalendar--rr-bysetpos (rule data _d _t _s _c _u target)
+  (let (cell olist (bset (cadr (assq 'BYSETPOS rule))))
+    (when bset
+      (setq bset  (icalendar--rr-byxxx-to-data bset)
+            cell  (assq target data)
+            olist (cdr cell)
+            olist (mapcar (lambda (x)
+                            (setq x (sort x 'icalendar--rr-date-<))
+                            (icalendar--rr-subset x bset)) olist))
+      (setcdr cell olist))))
 
 (defun icalendar--rr-byminute (rule data dtstart tz start count until target)
   (icalendar--rr-by-x rule data dtstart tz start count until target 'BYMINUTE))
@@ -451,77 +494,88 @@ Negative values for N count backwards from the last week of the year"
   (icalendar--rr-by-x rule data dtstart tz start count until target 'BYHOUR))
 
 (defun icalendar--rr-byday (rule data dtstart _tz _start _count _until target)
-  (let (bset action olist period)
+  (let (bset action olist period func byday)
     (when (setq bset (cadr (assq 'BYDAY rule)))
       (setq action (icalendar--rr-byxxx-effect data 'DAILY)
             period (cdr (assq :last-freq data))
             bset   (icalendar--rr-byxxx-to-data bset)
             olist  (cdr (assq target data))
-            func   (cond ((eq :expands   action)
+            byday  (cond ((eq :expands   action)
                           'icalendar--rr-expand-occurlist-byday)
                          ((eq :restricts action)
                           'icalendar--rr-restrict-occurlist-byday))
-            olist  (funcall func bset period olist dtstart))
+            func   (lambda (o) (funcall byday bset period o dtstart))
+            olist  (mapcar func olist))
       (setcdr data (cons (cons :byday bset) (cdr data)))
       (setcdr (assq :last-freq data) 'DAILY)
       (setcdr (assq target     data)  olist)) ))
 
 (defun icalendar--rr-bymonthday (rule data _dtstart _tz _start _count _until target)
-  (let (bset olist dlist action)
+  (let (bset olist action func)
     (when (setq bset (cadr (assq 'BYMONTHDAY rule)))
       (setq bset   (icalendar--rr-byxxx-to-data bset)
             action (icalendar--rr-byxxx-effect data 'DAILY)
             olist  (cdr (assq target data)))
+
       (cond ((eq :expands   action)
-             (mapc
-              (lambda (o)
-                (mapc
-                 (lambda (day &optional new-day)
-                   (if (setq new-day (icalendar--rr-monthday o day))
-                       (setq dlist (cons new-day dlist)))) bset)) olist))
+             (setq func
+                   (lambda (o &optional dlist)
+                     (mapc
+                      (lambda (day &optional new-day)
+                        (if (setq new-day (icalendar--rr-monthday o day))
+                            (setq dlist (cons new-day dlist)))) bset) dlist)))
             ((eq :restricts action)
-             (mapc (lambda (o)
-                     (mapc (lambda (d)
+             (setq func
+                   (lambda (o &optional dlist)
+                     (mapc (lambda (d &optional dlist)
                              (if (eq (nth 3 o) d)
-                                 (setq dlist (cons o dlist)))) bset)) olist)))
+                                 (setq dlist (cons o dlist)))) bset) dlist))) )
+      (setq olist (icalendar--rr-apply-rule-to-group olist func)
+            olist (mapcar 'car olist))
       (setcdr data (cons (cons :bymonthday bset) (cdr data)))
       (setcdr (assq :last-freq data) 'DAILY)
-      (setcdr (assq target     data)  dlist)) ))
+      (setcdr (assq target     data)  olist)) ))
 
 ;; only interpreting BYYEARDAY for YEARLY repeats. Not sure what it
 ;; would mean in other contexts.
 (defun icalendar--rr-byyearday (rule data dtstart _tz _start _count _until target)
-  (let (bset olist ylist dlist)
+  (let (bset olist ylist func)
     (when (and (eq (cdr (assq :last-freq data)) 'YEARLY)
                (setq bset (cadr (assq 'BYYEARDAY rule))))
+
       (setq bset  (icalendar--rr-byxxx-to-data bset)
             olist (cdr (assq target data))
-            ylist (delete-dups (mapcar (lambda (dt) (nth 5 dt)) olist)))
-      (mapc (lambda (y)
-              (mapc (lambda (d)
-                      (if (setq d (icalendar--rr-nth-day y d dtstart))
-                          (setq dlist (cons d dlist)))) bset)) ylist)
+            func  (lambda (dt) (nth 5 dt))
+            ylist (icalendar--rr-apply-rule-to-group olist func)
+            ylist (mapcar 'delete-dups ylist)
+            func  (lambda (y &optional dlist)
+                    (mapc (lambda (d)
+                              (if (setq d (icalendar--rr-nth-day y d dtstart))
+                                  (setq dlist (cons d dlist)))) bset) dlist)
+            ylist (icalendar--rr-apply-rule-to-group ylist func)
+            ylist (mapcar 'car ylist))
+
       (setcdr data (cons (cons :byyearday bset) (cdr data)))
       (setcdr (assq :last-freq data) 'DAILY)
-      (setcdr (assq target     data) dlist)) ))
+      (setcdr (assq target     data) ylist)) ))
 
 ;; byweekno only applies to yearly rules (per RFC2445)
 (defun icalendar--rr-byweekno (rule data dtstart _tz _start _count _until target)
-  (let (bset olist wlist)
+  (let (bset olist wlist func)
     (when (and (eq (cdr (assq :last-freq data)) 'YEARLY)
                (setq bset (cadr (assq 'BYWEEKNO rule))))
+
       (setq bset  (icalendar--rr-byxxx-to-data bset)
-            olist (cdr (assq target data)))
-      (mapc (lambda (dt)
-              (mapc (lambda (n &optional wd)
-                      (setq wd (icalendar--rr-nth-week (nth 5 dt) n)
-                            wlist (cons wd wlist))) bset)) olist)
-      (setq wlist
-            (mapcar
-             (lambda (dt)
-               (icalendar--rr-merge-date dtstart dt :sec :min :hour :dow))
-             wlist)
-            wlist (delq nil wlist))
+            olist (cdr (assq target data))
+            func  (lambda (dt)
+                    (mapc (lambda (n &optional wd)
+                            (setq wd (icalendar--rr-nth-week (nth 5 dt) n)
+                                  wlist (cons wd wlist))) bset) wlist)
+            wlist (mapcar 'car (icalendar--rr-apply-rule-to-group olist func))
+            func  (lambda (dt)
+                    (icalendar--rr-merge-date dtstart dt :sec :min :hour :dow))
+            wlist (icalendar--rr-apply-rule-to-group wlist func))
+
       (setcdr data (cons (cons :byweekno bset) (cdr data)))
       (setcdr (assq :last-freq data) 'WEEKLY)
       (setcdr (assq target     data)   wlist)) ))
@@ -553,7 +607,7 @@ Negative values for N count backwards from the last week of the year"
               (float-time until))
           (setq occurs (cons next occurs) last next)))
   ;; store the basic list of event-occurrences
-  (setcdr data (cons (cons target occurs) (cdr data))) ))
+  (setcdr data (cons (cons target (mapcar 'list occurs)) (cdr data))) ))
 
 (defun icalendar--rr-freq (rule data _dtstart _tz _start _count _until _target)
   (let (freq)
