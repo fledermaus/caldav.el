@@ -690,7 +690,7 @@ either 16:00:00 or 15:00:00 (depending on the date) in Europe/London."
       ;; explicit `UNTIL' in the call to this function and then the implicit
       ;; one year span we impose (as calendar views rarely exceed one year):
       (if (setq until (cadr (assq 'UNTIL rrule)))
-          (setq until (icalendar--rr-decode-isodatetime until)
+          (setq until (icalendar--decode-isodatetime until nil zone)
                 until (apply 'encode-time until))
         (if end
             (setq until end)
@@ -807,7 +807,7 @@ either 16:00:00 or 15:00:00 (depending on the date) in Europe/London."
             (setq olist (nreverse tmp))))
 
       (when until
-        (setq until (decode-time until))
+        (setq until (with-timezone t (decode-time until)))
         (setq olist
               (delete-if (lambda (o) (icalendar--rr-date-< until o)) olist)))
 
