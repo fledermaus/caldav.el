@@ -606,8 +606,8 @@ Out-of-range values are omitted."
       (if (<= (float-time (apply 'encode-time next))
               (float-time until))
           (setq occurs (cons next occurs) last next)))
-  ;; store the basic list of event-occurrences
-  (setcdr data (cons (cons target (mapcar 'list occurs)) (cdr data))) ))
+    ;; store the basic list of event-occurrences
+    (setcdr data (cons (cons target (mapcar 'list occurs)) (cdr data))) ))
 
 (defun icalendar--rr-freq (rule data _dtstart _tz _start _count _until _target)
   (let (freq)
