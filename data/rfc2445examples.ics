@@ -238,7 +238,7 @@ UID:RExample21
 END:VEVENT
 
 BEGIN:VEVENT
-DESCRIPTION:Every other year on January\, February\, and March for 10 occu
+DESCRIPTION:Every other year in January\, February\, and March for 10 occu
  rrences:
 DTSTAMP:20040102T053656Z
 DTSTART;TZID=US-Eastern:19970310T090000
