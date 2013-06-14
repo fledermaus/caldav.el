@@ -743,8 +743,16 @@ either 16:00:00 or 15:00:00 (depending on the date) in Europe/London."
         ;; note that fixed dates are allowed to precede th start date
 
         (setq rc-dates (append rd-list rc-dates)
-              rc-dates (sort rc-dates 'icalendar--rr-date-<)
-              ecell    (assq :exclude edata)
+              rc-dates (sort rc-dates 'icalendar--rr-date-<))
+
+        ;; de-duplicate the recurrence list (don't need to do this for the
+        ;; exclude list, as those dupes don't show up in the output):
+        (let ((tail rc-dates))
+          (while tail
+            (if (equal (car tail) (cadr tail)) (setcdr tail (cddr tail)))
+            (setq tail (cdr tail))))
+
+        (setq ecell    (assq :exclude edata)
               ex-dates (cdr ecell)
               ex-dates (append ex-list ex-dates)
               ex-dates (sort ex-dates 'icalendar--rr-date-<))
