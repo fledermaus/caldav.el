@@ -567,10 +567,10 @@ Out-of-range values are omitted."
 
       (setq bset  (icalendar--rr-byxxx-to-data bset)
             olist (cdr (assq target data))
-            func  (lambda (dt)
+            func  (lambda (dt &optional wl)
                     (mapc (lambda (n &optional wd)
                             (setq wd (icalendar--rr-nth-week (nth 5 dt) n)
-                                  wlist (cons wd wlist))) bset) wlist)
+                                  wl (cons wd wlist))) bset) wl)
             wlist (mapcar 'car (icalendar--rr-apply-rule-to-group olist func))
             func  (lambda (dt)
                     (icalendar--rr-merge-date dtstart dt :sec :min :hour :dow))
