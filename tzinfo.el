@@ -254,6 +254,81 @@ See (man \"tzfile(5)\") for more detail."
     (if v2-data (setq rval (cons v2-data rval)))
     (nreverse rval)))
 
+(defvar tzinfo-posix-re-name "^[^:0-9,+-][^0-9,+-]\\{2,\\}")
+
+(defvar tzinfo-posix-re-offs
+  (concat "^[-+/]?"
+          "\\(?:\\([0-9]+\\)"
+          "\\(?::\\(0-9+\\)"
+          "\\(?::\\(0-9+\\)\\)?\\)?\\)"))
+
+(defvar tzinfo-posix-re-when
+  (concat
+   ",\\(?:" "J?" "\\([0-9]+\\)" "\\|"
+            "M"  "\\([0-9]+\\)\\.\\([0-9]+\\)\\.\\([0-9]+\\)" "\\)"))
+
+(defun tzinfo-posix-parse-name (raw)
+  (if (string-match tzinfo-posix-re-name raw)
+      (cons (substring raw (match-end 0)) (match-string 0 raw))
+    nil))
+
+(defun tzinfo-posix-parse-offset (raw)
+  (if (string-match tzinfo-posix-re-offs raw)
+      (cons (substring raw (match-end 0))
+            (* (if (eq (aref raw 0) ?-) 1 -1) ;; POSIX TZ ± is backwards
+               (+ (* (string-to-number (or (match-string 1 raw) "0")) 3600)
+                  (* (string-to-number (or (match-string 2 raw) "0")) 60)
+                  (* (string-to-number (or (match-string 3 raw) "0")) 1))))
+    nil))
+
+(defun tzinfo-posix-parse-when (raw)
+  (if (string-match tzinfo-posix-re-when raw)
+      (let (type first data)
+        (setq type  (aref raw 1)
+              first (cond ((eq ?J type) 1  )
+                          ((eq ?M type) nil)
+                          (t            0  ))
+              data  (if first
+                        (list :year-day
+                              (string-to-number (match-string 1 raw)) first)
+                      (list :week-day
+                            (string-to-number (match-string 2 raw))
+                            (string-to-number (match-string 3 raw))
+                            (string-to-number (match-string 4 raw)))))
+        (cons (substring raw (match-end 0)) data))
+    nil))
+
+(defun tzinfo-posix-parse-time (raw)
+  (if (string-match tzinfo-posix-re-offs raw)
+      (cons (substring raw (match-end 0))
+            (format "%02d:%02d:%02d"
+                    (string-to-number (or (match-string 1 raw) "2"))
+                    (string-to-number (or (match-string 2 raw) "0"))
+                    (string-to-number (or (match-string 3 raw) "0"))))
+    (cons raw "02:00:00")))
+
+(defun tzinfo-posix-string-to-data (posix-string)
+  "Parse a POSIZ TZ string into a data structure specifying the time zone."
+  (let (tz-data cell)
+    (mapc (lambda (x &optional slot handler data)
+            (setq slot (car x) handler (cdr x))
+            (if (setq data (funcall handler posix-string))
+                (setq posix-string (car data)
+                      tz-data (cons (cons slot (cdr data)) tz-data))))
+          '((:name            . tzinfo-posix-parse-name  )
+            (:offset          . tzinfo-posix-parse-offset)
+            (:dst-name        . tzinfo-posix-parse-name  )
+            (:dst-offset      . tzinfo-posix-parse-offset)
+            (:dst-start-date  . tzinfo-posix-parse-when  )
+            (:dst-start-time  . tzinfo-posix-parse-time  )
+            (:dst-end-date    . tzinfo-posix-parse-when  )
+            (:dst-end-time    . tzinfo-posix-parse-time  )))
+    (and (assq :dst-start-date tz-data)               ;; have DST element but
+         (not (setq cell (assq :dst-offset tz-data))) ;; no explicit DST offset
+         (setq cell    (assq :offset tz-data)         ;; implies STD + 3600
+               tz-data (cons (cons :dst-offset (+ (cdr cell) 3600)) tz-data)))
+    tz-data))
+
 (defun tzinfo-data (zone)
   "Process ZONE (a string specifying a timezone, as per the TZ environment
 variable: either a standard zone such as \"Antarctica/South_Pole\" or the
