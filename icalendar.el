@@ -2381,6 +2381,92 @@ the entry."
       ;; cvalue of `nil' means remove the value
       (delq cell prop-list))))
 
+(defun icalendar--seconds-to-offset (seconds)
+  (let (hours minutes)
+    (setq minutes (abs (/ seconds 60))
+          minutes (% minutes 60)
+          hours   (abs (truncate (/ seconds 3600.0))))
+    (format "%c%02d%02d" (if (< seconds 0) ?- ?+) hours minutes)))
+
+(defun icalendar--tzspec-to-rrule (tzdata rule)
+  (let (time spec rtype n)
+    (cond ((eq :std rule) (setq time :dst-end-time   spec :dst-end-date))
+          ((eq :dst rule) (setq time :dst-start-time spec :dst-start-date)))
+    (message "looking up %S" spec)
+    (setq spec  (cdr (assq spec tzdata))
+          rtype (car spec))
+    (cond ((eq :week-day rtype)
+           (setq n (nth 2 spec))
+           (format "FREQ=YEARLY;BYMONTH=%d;BYDAY=%d%s"
+                   (nth 1 spec)
+                   (if (eq 5 n) -1 n)
+                   (aref icalendar--weekday-array (nth 3 spec))))
+          ((eq :year-day rtype)
+           (error "year-day tz shifts not supported yet")))))
+
+(defun icalendar--make-timezone (tzname &optional tzid extra-props)
+  "Take a tzfile(5) time zone name (eg: \"Europe/London\" or \"US/Pacific\")
+and prepare an rfc2445 VTIMEZONE structure representing it."
+  (let (prop-list (tzdata (cadr (tzinfo-data tzname))))
+    ;; must have version 2 zone data as v1 does not supply the POSIX spec:
+    (if (setq tzdata (assq :zone-data tzdata)
+              tzdata (assq 'posix tzdata)
+              tzdata (cdr tzdata))
+        (if (setq tzdata (tzinfo-posix-string-to-data tzdata))
+            (let (standard std-offset std-name std-rrule std-startt end-span
+                  daylight dst-offset dst-name dst-rrule dst-startt)
+              (when (assq :offset tzdata)
+                (setq std-offset (cdr (assq :offset tzdata))
+                      dst-offset (or (cdr (assq :dst-offset tzdata)) std-offset)
+                      std-offset (icalendar--seconds-to-offset std-offset)
+                      dst-offset (icalendar--seconds-to-offset dst-offset)
+                      std-startt (cdr (assq :dst-end-time tzdata))
+                      std-startt (replace-regexp-in-string ":" "" std-startt)
+                      std-startt (format "19700101T%s" std-startt)
+                      std-rrule  (icalendar--tzspec-to-rrule tzdata :std)
+                      end-span   "19710101T000000"
+                      std-startt (icalendar--rr-apply-rrule
+                                  std-rrule std-startt end-span nil tzname)
+                      std-startt (car std-startt)
+                      std-startt (mapcar
+                                  (lambda (y) (nth y std-startt))
+                                  '(5 4 3 2 1 0))
+                      std-startt (apply 'format
+                                        "%04d%02d%02dT%02d%02d%02d" std-startt)
+                      std-name   (cdr (assq :name tzdata))
+                      standard  `(STANDARD nil
+                                           ((TZOFFSETFROM nil ,dst-offset)
+                                            (TZOFFSETTO   nil ,std-offset)
+                                            (TZNAME       nil ,std-name  )
+                                            (DTSTART      nil ,std-startt)
+                                            (RRULE        nil ,std-rrule ))
+                                           nil)))
+              (when (and standard (assq :dst-offset tzdata))
+                (setq dst-startt (cdr (assq :dst-start-time tzdata))
+                      dst-startt (replace-regexp-in-string ":" "" dst-startt)
+                      dst-startt (format "19700101T%s" dst-startt)
+                      dst-rrule  (icalendar--tzspec-to-rrule tzdata :dst)
+                      end-span   "19710101T000000"
+                      dst-startt (icalendar--rr-apply-rrule
+                                  dst-rrule dst-startt end-span nil tzname)
+                      dst-startt (car dst-startt)
+                      dst-startt (mapcar
+                                  (lambda (y) (nth y dst-startt))
+                                  '(5 4 3 2 1 0))
+                      dst-startt (apply 'format
+                                        "%04d%02d%02dT%02d%02d%02d" dst-startt)
+                      dst-name   (cdr (assq :dst-name tzdata))
+                      daylight  `(DAYLIGHT nil
+                                           ((TZOFFSETFROM nil ,std-offset)
+                                            (TZOFFSETTO   nil ,dst-offset)
+                                            (TZNAME       nil ,dst-name  )
+                                            (DTSTART      nil ,dst-startt)
+                                            (RRULE        nil ,dst-rrule ))
+                                           nil)))
+              `(VTIMEZONE nil
+                          ((TZID nil ,(or tzid tzname)) ,@extra-props)
+                          (,@(if daylight (list daylight))
+                           ,@(if standard (list standard)))) ))) ))
 ;; ======================================================================
 ;; write support - serialising an ical structure:
 ;; ======================================================================
