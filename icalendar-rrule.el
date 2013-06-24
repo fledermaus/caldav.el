@@ -616,6 +616,73 @@ Out-of-range values are omitted."
       (setcdr (assq :freq      data) freq)) ))
 ;; end of rrule part parser section.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defun icalendar--rr-apply-rrule (rrule dtstart to
+                                  &optional from zone edata slot)
+  "Apply an rfc2445 repeat-rule for a given range, returning a list of
+date-time values conforming to said rule.
+The purpose of this function is purely to generate a recurrence list,
+for use in rfc2445 event recurrence and timezone rule calculations.
+As such, it (deliberately) does not enforce a few rfc2445 constraints:
+• The DTSTART is NOT forced into the recurrence set even if it doesn't
+  match the RRULE spec.
+• The COUNT component of the RRULE is ignored (as it is not possible to
+  apply said component correctly for a single RRULE component: It can only
+  be meaningfully applied to the combined expansion of all four possible
+  recurrence rules: RRULE, RDATE, EXRULE and EXDATE)."
+  (let (start until end)
+    ;; if the rrule was not already unpacked, deal with that task:
+    (if (stringp rrule)
+        (setq rrule (icalendar--split-value rrule)))
+    ;; likewise unpack the DTSTART value if necessary:
+    (if (stringp dtstart)
+        (setq dtstart (icalendar--rr-decode-isodatetime dtstart)))
+    (if dtstart
+        (setq start (apply 'encode-time dtstart)))
+
+    (or edata (setq edata (list t '(:freq nil) '(:last-freq nil))))
+    (or slot  (setq slot  :occurs))
+    (or zone  (setq zone  "UTC0"))
+
+    (if (stringp from)
+        (if (setq from (icalendar--decode-isodatetime from nil zone))
+            (setq from (apply 'encode-time from))))
+    (or from (setq from dtstart))
+
+    (if (stringp to)
+        (if (setq to (icalendar--decode-isodatetime to nil zone))
+            (setq to (apply 'encode-time to))))
+
+    (if (setq until (cadr (assq 'UNTIL rrule)))
+        (setq until (icalendar--decode-isodatetime until nil zone)
+              until (apply 'encode-time until)))
+
+    (if (and to until)
+        (setq end (if (time-less-p to until) to until))
+      (setq end (or to until)))
+
+    (with-timezone t ;; enforce UTC calculations for this block
+      (mapc
+       (lambda (handler)
+         (funcall handler rrule edata dtstart zone start nil end slot))
+       icalendar--rr-handlers))
+
+    ;; sort the generated dates
+    (let (dates cell)
+      (setq cell  (assq slot edata)
+            dates (cdr  cell)
+            dates (sort dates 'icalendar--rr-date-<))
+
+      ;; strip out dates before the start
+      (while (icalendar--rr-date-< (car dates) from)
+        (setq dates (cdr dates)))
+
+      ;; strip out dates after the end
+      (setq dates (nreverse dates)
+            end   (decode-time end))
+      (while (icalendar--rr-date-< end (car dates))
+        (setq dates (cdr dates)))
+
+      (nreverse dates))))
 
 (defun icalendar--rr-occurrences (event zone-map &optional end tz)
   "Return a list of time values (as per `decode-time') at which EVENT has
