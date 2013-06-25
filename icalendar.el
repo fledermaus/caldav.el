@@ -2410,8 +2410,11 @@ should be extracted."
            (error "year-day style timezone shifts not supported yet")))))
 
 (defun icalendar--make-timezone (tzname &optional tzid extra-props)
-  "Take a tzfile(5) time zone name (eg: \"Europe/London\" or \"US/Pacific\")
-and prepare an rfc2445 VTIMEZONE structure representing it."
+  "Take a time zone name and return an rfc2445 VTIMEZONE structure.
+TZNAME is a tzfile(5) zone name.
+TZID is an arbitrary ident string (defaulting to TZNAME).
+EXTRA-PROPS is an optional list of timezone properties
+  eg: '((X-LIC-LOCATION nil \"Somewhere/Rainbow\"))."
   (let (prop-list (tzdata (cadr (tzinfo-data tzname))))
     ;; must have version 2 zone data as v1 does not supply the POSIX spec:
     (if (setq tzdata (assq :zone-data tzdata)
