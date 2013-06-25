@@ -2389,6 +2389,11 @@ the entry."
     (format "%c%02d%02d" (if (< seconds 0) ?- ?+) hours minutes)))
 
 (defun icalendar--tzspec-to-rrule (tzdata rule)
+  "Convert the time zone specification from `tzinfo-posix-string-to-data'
+into an RRULE string.
+TZDATA is the structure returned by `tzinfo-posix-string-to-data'
+RULE is :std or :dst, indicating a standard or daylight-saving rule
+should be extracted."
   (let (time spec rtype n)
     (cond ((eq :std rule) (setq time :dst-end-time   spec :dst-end-date))
           ((eq :dst rule) (setq time :dst-start-time spec :dst-start-date)))
@@ -2402,7 +2407,7 @@ the entry."
                    (if (eq 5 n) -1 n)
                    (aref icalendar--weekday-array (nth 3 spec))))
           ((eq :year-day rtype)
-           (error "year-day tz shifts not supported yet")))))
+           (error "year-day style timezone shifts not supported yet")))))
 
 (defun icalendar--make-timezone (tzname &optional tzid extra-props)
   "Take a tzfile(5) time zone name (eg: \"Europe/London\" or \"US/Pacific\")
