@@ -2444,7 +2444,8 @@ and prepare an rfc2445 VTIMEZONE structure representing it."
                                             (TZOFFSETTO   nil ,std-offset)
                                             (TZNAME       nil ,std-name  )
                                             (DTSTART      nil ,std-startt)
-                                            (RRULE        nil ,std-rrule ))
+                                            ,@(if std-rrule
+                                                  `((RRULE nil ,std-rrule))))
                                            nil)))
               (when (and standard (assq :dst-offset tzdata))
                 (setq dst-startt (cdr (assq :dst-start-time tzdata))
@@ -2466,7 +2467,8 @@ and prepare an rfc2445 VTIMEZONE structure representing it."
                                             (TZOFFSETTO   nil ,dst-offset)
                                             (TZNAME       nil ,dst-name  )
                                             (DTSTART      nil ,dst-startt)
-                                            (RRULE        nil ,dst-rrule ))
+                                            ,@(if dst-rrule
+                                                  `((RRULE nil ,dst-rrule))))
                                            nil)))
               `(VTIMEZONE nil
                           ((TZID nil ,(or tzid tzname)) ,@extra-props)
