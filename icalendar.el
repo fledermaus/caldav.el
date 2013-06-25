@@ -2477,6 +2477,31 @@ EXTRA-PROPS is an optional list of timezone properties
                           ((TZID nil ,(or tzid tzname)) ,@extra-props)
                           (,@(if daylight (list daylight))
                            ,@(if standard (list standard)))) ))) ))
+
+(defun icalendar--add-timezone (icalendar timezone)
+  "Given an ICALENDAR data structure (ie a parsed VCALENDAR object) and
+a time zone TIMEZONE (a tzile(5) name like \"America/Jamaica\" or
+a timezone structure as returned by `icalendar--make-timezone'), insert
+the timezone so specified into ICALENDAR.
+If a timezone with the same TZID exists in ICALENDAR, it will be replaced.
+Returns the modified ICALENDAR."
+  (if (stringp timezone) (setq timezone (icalendar--make-timezone timezone)))
+  (let (blobs b cell id item)
+    ;; look for en existing tz entry that matches:
+    (setq blobs (nth 3 icalendar)
+          id    (assq 'TZID (nth 2 timezone))
+          b     blobs)
+    (while (and (not cell) b)
+      (setq item (car b))
+      (and (eq 'VTIMEZONE (car item))
+           (equal (assq 'TZID (nth 2 item)) id)
+           (setq cell item))
+      (setq b (cdr b)))
+    ;; replace existing entry if there is one, otherwise add new zone
+    (if cell
+        (setcdr cell (cdr timezone))
+      (setf (nth 3 icalendar) (cons timezone blobs)))
+    icalendar))
 ;; ======================================================================
 ;; write support - serialising an ical structure:
 ;; ======================================================================
