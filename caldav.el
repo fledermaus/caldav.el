@@ -28,6 +28,8 @@
 
 ;;; Code:
 (require 'url-parse)
+(require 'icalendar)
+(require 'dav)
 
 (defconst caldav-ns-caldav "urn:ietf:params:xml:ns:caldav")
 (defconst caldav-ical-node 
@@ -236,3 +238,4 @@ to FUNCTION."
                        calendar-items)))
           ical)))
 
+(provide 'caldav)

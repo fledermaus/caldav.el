@@ -2366,6 +2366,7 @@ the entry."
 ;; ======================================================================
 ;; write support - updating ical contents
 ;; ======================================================================
+(require 'tzinfo)
 (defun icalendar--set-event-property (event prop value &optional coerce)
   (let ((prop-list (nth 2 event)) cell cvalue)
     ;; events MUST have a UID, which is always the 1st prop in the list
@@ -2415,6 +2416,7 @@ TZNAME is a tzfile(5) zone name.
 TZID is an arbitrary ident string (defaulting to TZNAME).
 EXTRA-PROPS is an optional list of timezone properties
   eg: '((X-LIC-LOCATION nil \"Somewhere/Rainbow\"))."
+  (require 'icalendar-rrule)
   (let (prop-list (tzdata (cadr (tzinfo-data tzname))))
     ;; must have version 2 zone data as v1 does not supply the POSIX spec:
     (if (setq tzdata (assq :zone-data tzdata)
