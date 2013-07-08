@@ -1,0 +1,18 @@
+(when (or load-file-name buffer-file-name)
+  (add-to-list 'load-path
+               (file-name-directory (or load-file-name buffer-file-name)))
+  (require 'caldav)
+  (require 'icalendar)
+
+  (let (caldav ical item)
+    (setq caldav (caldav-fetch-ical)
+          ical   (caldav-ical-to-alist caldav)
+          pred   '((SUMMARY    . "~ilg\\|intel")
+                   (CATEGORIES . "~call"))
+          item   (caldav-filter-items ical '(VEVENT) pred))
+    (mapcar (lambda (x)
+              (icalendar--add-timezone (cadr x) "Europe/London")
+              (icalendar--add-timezone (cadr x) "US/Pacific"))
+            item)
+    (insert (pp item))
+    t))
