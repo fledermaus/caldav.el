@@ -2486,6 +2486,7 @@ a time zone TIMEZONE (a tzile(5) name like \"America/Jamaica\" or
 a timezone structure as returned by `icalendar--make-timezone'), insert
 the timezone so specified into ICALENDAR.
 If a timezone with the same TZID exists in ICALENDAR, it will be replaced.
+ICALENDAR is modified in place.
 Returns the modified ICALENDAR."
   (if (stringp timezone) (setq timezone (icalendar--make-timezone timezone)))
   (let (blobs b cell id item)
