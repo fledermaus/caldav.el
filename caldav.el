@@ -234,7 +234,8 @@ to FUNCTION."
                          (and (cond ((listp   type) (memq itype type))
                                     ((symbolp type) (eq   itype type)) (t))
                               (caldav-filter-apply-predicates i predicates)
-                              (if (functionp function) (funcall function i) i)))
+                              (if (functionp function)
+                                  (funcall function calendar) calendar)))
                        calendar-items)))
           ical)))
 
