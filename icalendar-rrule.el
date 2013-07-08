@@ -102,7 +102,7 @@ If MONTH is specified, the generated date must be in MONTH (1-12)
 or nil will be returned.
 Retruns a decode-time value (which may be the original if no shift occurred)."
   (let ((dow (if (listp template) (nth 6 template) template))
-        epoch old new-date)
+        epoch old new-date jump)
     (if (eq (nth 6 date) dow)
         date
       (setq epoch    (float-time (apply 'encode-time date))
@@ -399,7 +399,7 @@ and 6 meaning Saturday."
   "Return the decoded time value for week N in YEAR (as per ISO 8601).
 Negative values for N count backwards from the last week of the year"
   (when (and (>= 53 n) (<= -53 n) (not (zerop n)))
-    (let (start-date start result)
+    (let (start-date start result m)
       (cond ((< n 0)
              (setq m (1+ n) start-date (icalendar--rr-weekN-start year day0)))
             ((> n 0)
@@ -712,6 +712,7 @@ either 16:00:00 or 15:00:00 (depending on the date) in Europe/London."
         rrule   ;; repeat-rule, per rfc2445 split by "," into components
         rdate   ;; explicit repeat spec, per rfc2445, split by ","
         exdate  ;; explicit exclude spec, per rfc2445, split by ","
+        exrule  ;; repeat-rule, per rfc2445 split by "," into components
         rd-list ;; list of explicit repeat   date-times (per `decode-time')
         ex-list ;; list of explicit excluded date-times (per `decode-time')
         rzone   ;; POSIX TZ string for rdate parsing
