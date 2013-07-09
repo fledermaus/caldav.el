@@ -2367,18 +2367,21 @@ the entry."
 ;; write support - updating ical contents
 ;; ======================================================================
 (require 'tzinfo)
-(defun icalendar--set-event-property (event prop value &optional coerce)
+(defun icalendar--set-event-property (event prop value &optional attr coerce)
   (let ((prop-list (nth 2 event)) cell cvalue)
     ;; events MUST have a UID, which is always the 1st prop in the list
     ;; so we can always splice values in at the cdr of the prop-list,
     ;; likewise since we want delq of the UID cell to be a no-op, we
     ;; can just delq without worrying about delq'ing the head of the list:
-    (setq cvalue (funcall (or coerce 'identity) value)
-          cell   (assq prop prop-list))
+    (setq cvalue   (funcall (or coerce 'identity) value)
+          cell     (assq prop prop-list)
+          old-attr (cadr cell))
     (if cvalue
         (if cell
-            (setcdr (cdr cell) (cons cvalue nil))
-          (setcdr prop-list (cons (list prop nil cvalue) (cdr prop-list))))
+            (progn (setcdr (cdr cell) (cons cvalue nil))
+                   (setcar (cdr cell) (or attr old-attr)))
+          (setcdr prop-list (cons (list prop (or attr old-attr) cvalue)
+                                  (cdr prop-list))))
       ;; cvalue of `nil' means remove the value
       (delq cell prop-list))))
 
