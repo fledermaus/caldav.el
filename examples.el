@@ -10,9 +10,20 @@
           pred   '((SUMMARY    . "~ilg\\|intel")
                    (CATEGORIES . "~call"))
           item   (caldav-filter-items ical '(VEVENT) pred))
-    (mapcar (lambda (x)
-              (icalendar--add-timezone (cadr x) "Europe/London")
-              (icalendar--add-timezone (cadr x) "US/Pacific"))
-            item)
-    (insert (pp item))
+    (mapc
+     (lambda (x &optional vcal)
+       (setq vcal (cadr x))
+       (icalendar--add-timezone vcal "US/Pacific")
+       (mapc (lambda (event &optional dt)
+               (dolist (prop '(DTSTART DTEND))
+                 (setq dt (icalendar--get-event-property event prop)
+                       dt (replace-regexp-in-string "T16" "T08" dt))
+                 (icalendar--set-event-property event prop dt '(TZID "US/Pacific"))))
+             (icalendar--get-children vcal 'VEVENT))
+       (let ((url-debug t)) (caldav-put-ical (car x) (cdr x)))
+       )
+     item)
     t))
+
+
+
