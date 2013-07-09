@@ -124,7 +124,8 @@ MUST already exist at the specified URL."
           ical-text (icalendar--serialise-element ical))
     (dav-request url "PUT" nil ical-text
                  (lambda (&rest _args) (message "%s" (buffer-string)))
-                 nil `((,(if create "If-None-Match" "If-Match") "*")))))
+                 nil `(("Content-type" . "text/calendar")
+                       (,(if create "If-None-Match" "If-Match") . "*")))))
 
 (defun caldav-fetch-ical (&optional url start end)
   "Return a a structure containing a list of rfc2445 ical objects,
