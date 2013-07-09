@@ -463,7 +463,6 @@ added to this list, so most requests can just pass in nil."
       (setq namespaces (cons '("D" . "DAV:") namespaces)))
 
   (let* ((url-request-extra-headers `(("Depth" . ,depth)
-                                      ("Content-type" . "text/xml")
                                       ,@headers))
          (url-request-method method)
          (url-request-data
@@ -477,7 +476,11 @@ added to this list, so most requests can just pass in nil."
                           namespaces "\n    ")
                ">\n"
                body
-               "</" (symbol-name tag) ">\n"))))
+               "</" (symbol-name tag) ">\n")
+            body)))
+    (if (not (assoc "Content-type" url-request-extra-headers))
+        (setq url-request-extra-headers
+              (cons '("Content-type" . "text/xml") url-request-extra-headers)))
     (if callback
         (url-retrieve url 'dav-process-async-response (list url callback))
       (dav-process-response (url-retrieve-synchronously url) url)) ))
