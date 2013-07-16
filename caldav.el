@@ -133,7 +133,7 @@ from URL (defaulting to `caldav-default-url'), optionally limiting
 your search to between START and END.\n
 START defaults to the beginnin of the current month,
 END defaults to one year after START.
-The returned valus is an alist of the form:\n
+The returned value is an alist of the form:\n
    ((:from   start-datetime-srting)
     (:to     end-datetime-string)
     (:caldav caldav-list))\n
