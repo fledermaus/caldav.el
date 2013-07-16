@@ -29,6 +29,7 @@
 ;;; Code:
 (require 'url-parse)
 (require 'icalendar)
+(require 'icalendar-write)
 (require 'dav)
 
 (defconst caldav-ns-caldav "urn:ietf:params:xml:ns:caldav")

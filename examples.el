@@ -1,8 +1,10 @@
 (when (or load-file-name buffer-file-name)
   (add-to-list 'load-path
                (file-name-directory (or load-file-name buffer-file-name)))
-  (require 'caldav)
-  (require 'icalendar)
+  (eval-and-compile
+    (require 'caldav)
+    (require 'icalendar)
+    (require 'icalendar-write))
 
   (let (caldav ical item)
     (setq caldav (caldav-fetch-ical)
