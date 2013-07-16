@@ -1,7 +1,6 @@
 ;;; icalendar.el --- iCalendar implementation -*-coding: utf-8 -*-
 
 ;; Copyright © 2002-2012  Free Software Foundation, Inc.
-;; Copyright © 2013  Vivek Dasmohapatra <vivek@etla.org>
 
 ;; Author:         Ulf Jasper <ulf.jasper@web.de>
 ;; Created:        August 2002
