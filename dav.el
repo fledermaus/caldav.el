@@ -462,8 +462,7 @@ added to this list, so most requests can just pass in nil."
   (if (not (assoc "D" namespaces))
       (setq namespaces (cons '("D" . "DAV:") namespaces)))
 
-  (let* ((url-request-extra-headers `(("Depth" . ,depth)
-                                      ,@headers))
+  (let* ((url-request-extra-headers `(("Depth" . ,depth) ,@headers))
          (url-request-method method)
          (url-request-data
           (if tag
