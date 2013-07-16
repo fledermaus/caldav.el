@@ -1,5 +1,5 @@
 ;; -*- lexical-binding: t -*-
-(eval-and-compile (require 'cl))
+(require 'cl)
 
 (require 'icalendar)
 
