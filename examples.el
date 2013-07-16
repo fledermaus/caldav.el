@@ -6,8 +6,8 @@
     (require 'icalendar)
     (require 'icalendar-write))
 
-  (let (caldav ical item)
-    (setq caldav (caldav-fetch-ical)
+  (let (caldav ical item pred)
+    (setq caldav (caldav-fetch-ical nil (current-time))
           ical   (caldav-ical-to-alist caldav)
           pred   '((SUMMARY    . "~ilg\\|intel")
                    (CATEGORIES . "~call"))
@@ -26,6 +26,4 @@
        )
      item)
     t))
-
-
 
