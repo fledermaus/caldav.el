@@ -132,7 +132,9 @@ MUST already exist at the specified URL."
   "Return a a structure containing a list of rfc2445 ical objects,
 from URL (defaulting to `caldav-default-url'), optionally limiting
 your search to between START and END.\n
-START defaults to the beginnin of the current month,
+If supplied, START and END should be time values, as returned by
+`encode-time' or `current-time'.\n
+START defaults to the beginning of the current month,
 END defaults to one year after START.
 The returned value is an alist of the form:\n
    ((:from   start-datetime-srting)
