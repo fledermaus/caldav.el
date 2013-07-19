@@ -806,8 +806,9 @@ either 16:00:00 or 15:00:00 (depending on the date) in Europe/London."
               rc-dates (sort rc-dates 'icalendar--rr-date-<))
 
         ;; strip out any recurrence rule dates < the start date
-        (while (icalendar--rr-date-< (car rc-dates) dtstart)
-          (setq rc-dates (cdr rc-dates)))
+        (if rc-dates
+            (while (icalendar--rr-date-< (car rc-dates) dtstart)
+              (setq rc-dates (cdr rc-dates))))
         ;; note that fixed dates are allowed to precede th start date
 
         (setq rc-dates (append rd-list rc-dates)
@@ -828,10 +829,13 @@ either 16:00:00 or 15:00:00 (depending on the date) in Europe/London."
         ;; DTSTART is grandfathered in to the occurrence list
         ;; even if the recur ruleset would exclude it.
         ;; only EXRULE and EXDATE can remove DTSTART from the list:
+        ;; here, we push the DTSTART value onto the recurrence list
+        ;; if it is not already there:
         (let (adjusted-start)
           (setq adjusted-start (copy-sequence dtstart))
           (setcar (last adjusted-start) zone)
-          (if (not (icalendar--rr-date-= (car rc-dates) adjusted-start))
+          (if (and rc-dates
+                   (not (icalendar--rr-date-= (car rc-dates) adjusted-start)))
               (setq rc-dates (cons adjusted-start rc-dates))))
 
         ;; push the sorted exclude dates back into the data structure:
