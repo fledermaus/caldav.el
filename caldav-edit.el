@@ -69,4 +69,6 @@ beginning of the month for START and one year after START for END)."
     (setq url-vcal (caldav-ical-to-alist
                     (caldav-fetch-ical url start end) t url))
     (caldav-filter-items url-vcal '(VEVENT) nil filter)
+    (setq occur
+          (sort occur (lambda (x y) (icalendar--rr-date-< (car x) (car y)))))
     (vector url-vcal uid-item uid-url occur)))
