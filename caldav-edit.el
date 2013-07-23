@@ -49,7 +49,22 @@
 (defun caldav-edit-fetch-data (&optional url start end)
   "Fetch and parse the ical data from URL (defaults to `caldav-default-url')
 from START to END (`encode-time' style time values, defaulting to the
-beginning of the month for START and one year after START for END)."
+beginning of the month for START and one year after START for END).\n
+Returns a 4 item vector:
+  0 - a URL/vcalander struct alist, as returned by `caldav-ical-to-alist'
+  1 - a UID to URL alist (keys are VEVENT etc UIDs, values are caldav endpoints)
+  2 - a UID to VEVENT/etc struct alist (VTODO etc not yet included)
+  3 - a sorted alist of ocurrence times (per `decode-time') to UID
+The values of item #2 are shared with the overall struct in item 0, this means:
+  • You can alter a value or values in #2
+  • look up the URL of the altered items in #1
+  • serialise the corresponding container in #0
+  • write said serialised container back to the URL
+Which will result in an updated calendar.\n
+It's done this way because each URL can contain multiple UID-identified
+VEVENT/etc items - ther server cares that things get written back to 
+the right containers (if only to avoid spurious duplicates) but the user
+likely does not."
   (let (url-vcal uid-item uid-url filter occur)
     (setq filter
           (lambda (url-ical &optional url zmap)
