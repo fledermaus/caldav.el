@@ -13,8 +13,9 @@ Values for TZ include:\n
   (declare (indent 1))
   `(let ((cz (getenv "TZ")) rv)
      (set-time-zone-rule (or ,tz cz))
-     (setq rv (progn ,@body))
-     (set-time-zone-rule cz) rv))
+     (unwind-protect
+         (setq rv (progn ,@body))
+       (set-time-zone-rule cz)) rv))
 
 (defconst icalendar--rr-freqs
   '(SECONDLY MINUTELY HOURLY DAILY WEEKLY MONTHLY YEARLY))
